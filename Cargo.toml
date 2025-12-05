@@ -1,0 +1,53 @@
+[package]
+name = "mishka"
+version = "1.0.0-beta.1"
+edition = "2024"
+description = "Utility to scan data files"
+license = "BSL-1.0"
+include = [
+    "**/*.rs",
+    "Cargo.toml",
+    "LICENSE",
+    "README.md"
+]
+
+repository = "https://github.com/DoumanAsh/mishka"
+readme = "README.md"
+
+[[bin]]
+name = "mishka"
+required-features = ["cli"]
+
+[dependencies.arg]
+version = "0.4"
+features = ["std"]
+optional = true
+
+# Temporarily to fix build of polars-lazy until next version
+[dependencies.polars-expr]
+version = "0.52"
+default-features = false
+features = ["timezones"]
+
+[dependencies.polars]
+version = "0.52"
+default-features = false
+features = [
+    "lazy", "new_streaming",
+    "is_in", "zip_with", "is_first_distinct", "is_last_distinct", "is_between", "unique_counts",
+    "row_hash", "diagonal_concat", "partition_by",
+    "csv", "parquet", "decompress",
+    "performant", "bigidx", "cse",
+    "dtype-slim",
+]
+
+[features]
+#default = ["cli"]
+cli = ["arg"]
+
+[profile.release]
+lto = 'thin'
+opt-level = 3
+codegen-units = 1
+strip = true
+debug = false
