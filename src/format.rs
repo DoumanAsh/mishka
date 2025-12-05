@@ -3,12 +3,10 @@
 use core::fmt;
 use core::sync::atomic::{self, AtomicBool, AtomicUsize};
 
-use polars::prelude::PlanCallback;
-
 ///Formatter for schema
-pub struct Schema<'a>(pub &'a polars::prelude::Schema);
+pub struct Schema<'a, T>(pub &'a T);
 
-impl fmt::Display for Schema<'_> {
+impl fmt::Display for Schema<'_, polars::prelude::Schema> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut names = self.0.iter_names();
         if let Some(name) = names.next() {
@@ -25,9 +23,9 @@ impl fmt::Display for Schema<'_> {
 }
 
 ///Formatter for data frame
-pub struct DataFrame<'a>(pub &'a polars::prelude::DataFrame);
+pub struct DataFrame<'a, T>(pub &'a T);
 
-impl fmt::Display for DataFrame<'_> {
+impl fmt::Display for DataFrame<'_, polars::prelude::DataFrame> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let height = self.0.height();
         let columns = self.0.get_columns();
@@ -80,15 +78,17 @@ impl State {
 ///Returns global state and formatting batch function
 ///
 ///It prints every `DataFrame` in loosely CSV format
-pub fn batch_function() -> (&'static State, PlanCallback<crate::DataFrame, bool>) {
+pub fn polars_batch_function() -> (&'static State, polars::prelude::PlanCallback<polars::prelude::DataFrame, bool>) {
     static STATE: State = State::new();
-
-    (&STATE, PlanCallback::new(|df: crate::DataFrame| {
-        if STATE.header_done.compare_exchange(false, true, atomic::Ordering::AcqRel, atomic::Ordering::Relaxed).is_ok() {
-            println!("{}", Schema(df.schema()))
-        }
-        STATE.row_count.fetch_add(df.height(), atomic::Ordering::AcqRel);
-        print!("{}", DataFrame(&df));
-        Ok(false)
-    }))
+    (
+        &STATE,
+        polars::prelude::PlanCallback::new(|df: polars::prelude::DataFrame| {
+            if STATE.header_done.compare_exchange(false, true, atomic::Ordering::AcqRel, atomic::Ordering::Relaxed).is_ok() {
+                println!("{}", Schema(df.schema().as_ref()))
+            }
+            STATE.row_count.fetch_add(df.height(), atomic::Ordering::AcqRel);
+            print!("{}", DataFrame(&df));
+            Ok(false)
+        }),
+    )
 }

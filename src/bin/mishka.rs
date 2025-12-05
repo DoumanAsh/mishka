@@ -4,7 +4,7 @@
 
 use std::process::ExitCode;
 
-mod cli;
+use mishka::cli;
 
 macro_rules! error {
     ($($arg:tt)*) => {{
@@ -14,17 +14,17 @@ macro_rules! error {
 }
 
 fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
-    let format = match args.format.select_or_infer(&query.path.0) {
+    let format = match args.format.select_or_infer(&query.path) {
         Some(format) => format,
         None => error!("Unable to infer file format. Please specify --format"),
     };
 
-    let df = match args.into_query().create_lazy(&query.path.0, format) {
+    let df = match args.into_query().create_lazy_polars(&query.path, format) {
         Ok(df) => df.with_new_streaming(true),
-        Err(error) => error!("{}: {error}", query.path.0.as_str())
+        Err(error) => error!("{}: {error}", query.path.as_str()),
     };
 
-    let (state, callback) = mishka::format::batch_function();
+    let (state, callback) = mishka::format::polars_batch_function();
     let df = match df.sink_batches(callback, false, core::num::NonZeroUsize::new(query.chunk_by)) {
         Ok(df) => df,
         Err(error) => error!("Unable to process data: {error}"),
@@ -32,28 +32,28 @@ fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
 
     match df.collect() {
         Ok(_) => println!("# Number of rows={}", state.row_count()),
-        Err(error) => error!("Unable to collect data: {error}")
+        Err(error) => error!("Unable to collect data: {error}"),
     }
 
     ExitCode::SUCCESS
 }
 
 fn concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
-    let format = match args.format.select_or_infer(&query.path.0) {
+    let format = match args.format.select_or_infer(&query.path) {
         Some(format) => format,
         None => error!("Unable to infer file format. Please specify --format"),
     };
-    let sink_format = match query.format.select_or_infer(&query.path.0) {
+    let sink_format = match query.format.select_or_infer(&query.path) {
         Some(format) => format,
         None => error!("Unable to infer output format. Please specify --format"),
     };
 
-    let mut df = match args.into_query().create_lazy(&query.path.0, format) {
+    let mut df = match args.into_query().create_lazy_polars(&query.path, format) {
         Ok(df) => df.with_new_streaming(true),
-        Err(error) => error!("{}: {error}", query.path.0.as_str())
+        Err(error) => error!("{}: {error}", query.path.as_str()),
     };
 
-    let target = polars::prelude::SinkTarget::Path(polars::prelude::PlPath::new(query.output.0.as_str()));
+    let target = polars::prelude::SinkTarget::Path(polars::prelude::PlPath::new(query.output.as_str()));
     let sink_options = polars::prelude::SinkOptions {
         sync_on_close: polars::prelude::sync_on_close::SyncOnCloseType::Data,
         ..Default::default()
@@ -66,9 +66,9 @@ fn concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
             };
             match df.sink_csv(target, options, None, sink_options) {
                 Ok(df) => df,
-                Err(error) => error!("{}: Unable to sink: {error}", query.output.0.as_str()),
+                Err(error) => error!("{}: Unable to sink: {error}", query.output.as_str()),
             }
-        },
+        }
         mishka::FileFormat::Parquet => {
             let options = polars::prelude::ParquetWriteOptions {
                 compression: polars::prelude::ParquetCompression::Snappy,
@@ -77,7 +77,7 @@ fn concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
 
             match df.sink_parquet(target, options, None, sink_options) {
                 Ok(df) => df,
-                Err(error) => error!("{}: Unable to sink: {error}", query.output.0.as_str()),
+                Err(error) => error!("{}: Unable to sink: {error}", query.output.as_str()),
             }
         }
     };
