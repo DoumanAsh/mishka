@@ -13,17 +13,25 @@ macro_rules! error {
     }};
 }
 
-#[cfg(not(feature = "polars"))]
 fn query(_args: cli::CommonArgs, _query: cli::Query) -> ExitCode {
-    error!("No data processing backend is selected")
+    #[cfg(feature = "polars")]
+    if _args.backend.is_polars() {
+        return polars_query(_args, _query);
+    }
+
+    error!("No data processing backend is available")
 }
-#[cfg(not(feature = "polars"))]
 fn concat(_args: cli::CommonArgs, _query: cli::Concat) -> ExitCode {
-    error!("No data processing backend is selected")
+    #[cfg(feature = "polars")]
+    if _args.backend.is_polars() {
+        return polars_concat(_args, _query);
+    }
+
+    error!("No data processing backend is available")
 }
 
 #[cfg(feature = "polars")]
-fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
+fn polars_query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
     let format = match args.format.select_or_infer(&query.path) {
         Some(format) => format,
         None => error!("Unable to infer file format. Please specify --format"),
@@ -49,7 +57,7 @@ fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
 }
 
 #[cfg(feature = "polars")]
-fn concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
+fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
     let format = match args.format.select_or_infer(&query.path) {
         Some(format) => format,
         None => error!("Unable to infer file format. Please specify --format"),

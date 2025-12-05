@@ -3,6 +3,34 @@ use arg::Args;
 
 use crate::ExpectFormat;
 
+#[derive(Copy, Clone, Debug)]
+///Backend to use
+pub enum Backend {
+    ///Polars
+    ///
+    ///Has limited compatibility with deprecated formats
+    Polars
+}
+
+impl Backend {
+    #[inline]
+    ///Indicates polars is selected
+    pub const fn is_polars(&self) -> bool {
+        matches!(self, Self::Polars)
+    }
+}
+
+impl core::str::FromStr for Backend {
+    type Err = &'static str;
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text.eq_ignore_ascii_case("polars") {
+            Ok(Self::Polars)
+        } else {
+            Err("Allowed values: polars")
+        }
+    }
+}
+
 #[derive(Args, Debug)]
 ///Query data
 pub struct Query {
@@ -39,6 +67,8 @@ pub enum Command {
 
 ///Common parameters of CLI
 pub struct CommonArgs {
+    ///Backend to use
+    pub backend: Backend,
     ///List of column names to select
     pub select: Vec<String>,
     ///List of column names to sort in order
@@ -83,6 +113,9 @@ impl CommonArgs {
 ///
 ///Utility to work with data files
 pub struct Cli {
+    #[arg(long, default_value = "Backend::Polars")]
+    ///Specifies backend to use. Defaults to polars
+    pub backend: Backend,
     #[arg(long)]
     ///List of column names to select
     pub select: Vec<String>,
@@ -122,6 +155,7 @@ impl Cli {
             stable,
             format,
             command,
+            backend
         } = self;
 
         unique = unique | !unique_by.is_empty();
@@ -133,6 +167,7 @@ impl Cli {
             unique_by,
             stable,
             format,
+            backend
         };
         (common, command)
     }
