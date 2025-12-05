@@ -4,6 +4,9 @@ permissions:
   # Attaching binary to release requires write perms
   contents: write
 
+env:
+  CARGO_FEATURE_SELECT: cli,polars
+
 on:
   release:
     types:
@@ -47,11 +50,11 @@ jobs:
 
     - name: Build release Win
       if: runner.os == 'Windows'
-      run: cargo build --release --features cli
+      run: cargo build --release --features $CARGO_FEATURE_SELECT
 
     - name: Build release Unix
       if: runner.os != 'Windows'
-      run: cargo build --release --features cli
+      run: cargo build --release --features $CARGO_FEATURE_SELECT
       env:
         RUSTFLAGS: '-C link-arg=-s'
 
@@ -111,7 +114,7 @@ jobs:
       run: cargo install cross
 
     - name: Build release
-      run: cross build --release --target ${{matrix.target}} --features cli
+      run: cross build --release --target ${{matrix.target}} --features $CARGO_FEATURE_SELECT
       env:
         RUSTFLAGS: '-C link-arg=-s'
 
@@ -160,7 +163,7 @@ jobs:
       run: rustup target add ${{matrix.target}}
 
     - name: Build release
-      run: SDKROOT=$(xcrun -sdk macosx14.2 --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx14.2 --show-sdk-platform-version)  cargo build --release --target ${{matrix.target}} --features cli
+      run: SDKROOT=$(xcrun -sdk macosx14.2 --show-sdk-path) MACOSX_DEPLOYMENT_TARGET=$(xcrun -sdk macosx14.2 --show-sdk-platform-version)  cargo build --release --target ${{matrix.target}} --features $CARGO_FEATURE_SELECT
       env:
         RUSTFLAGS: '-C link-arg=-s'
 

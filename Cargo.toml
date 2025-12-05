@@ -27,11 +27,13 @@ optional = true
 [dependencies.polars-expr]
 version = "0.52"
 default-features = false
+optional = true
 features = ["timezones"]
 
 [dependencies.polars]
 version = "0.52"
 default-features = false
+optional = true
 features = [
     # lazy and streaming engine helps to minimize RAM usage
     "lazy", "new_streaming",
@@ -53,6 +55,7 @@ cli = ["arg"]
 # AWS requires to populate environment variable (e.g. via aws configure export-credentials --format env)
 aws = ["polars/aws"]
 gcp = ["polars/gcp"]
+polars = ["dep:polars", "polars-expr"]
 
 [profile.release]
 lto = 'thin'

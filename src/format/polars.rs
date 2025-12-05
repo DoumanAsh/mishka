@@ -1,12 +1,13 @@
-//!Formatting
+//! Polars formatting module
 
 use core::fmt;
 use core::sync::atomic::{self, AtomicBool, AtomicUsize};
 
-///Formatter for schema
-pub struct Schema<'a, T>(pub &'a T);
+use ::polars as pl;
 
-impl fmt::Display for Schema<'_, polars::prelude::Schema> {
+use super::*;
+
+impl fmt::Display for Schema<'_, pl::prelude::Schema> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut names = self.0.iter_names();
         if let Some(name) = names.next() {
@@ -22,10 +23,7 @@ impl fmt::Display for Schema<'_, polars::prelude::Schema> {
     }
 }
 
-///Formatter for data frame
-pub struct DataFrame<'a, T>(pub &'a T);
-
-impl fmt::Display for DataFrame<'_, polars::prelude::DataFrame> {
+impl fmt::Display for DataFrame<'_, pl::prelude::DataFrame> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let height = self.0.height();
         let columns = self.0.get_columns();
@@ -78,11 +76,11 @@ impl State {
 ///Returns global state and formatting batch function
 ///
 ///It prints every `DataFrame` in loosely CSV format
-pub fn polars_batch_function() -> (&'static State, polars::prelude::PlanCallback<polars::prelude::DataFrame, bool>) {
+pub fn batch_function() -> (&'static State, pl::prelude::PlanCallback<pl::prelude::DataFrame, bool>) {
     static STATE: State = State::new();
     (
         &STATE,
-        polars::prelude::PlanCallback::new(|df: polars::prelude::DataFrame| {
+        pl::prelude::PlanCallback::new(|df: pl::prelude::DataFrame| {
             if STATE.header_done.compare_exchange(false, true, atomic::Ordering::AcqRel, atomic::Ordering::Relaxed).is_ok() {
                 println!("{}", Schema(df.schema().as_ref()))
             }

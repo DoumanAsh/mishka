@@ -6,6 +6,7 @@
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod format;
+#[cfg(feature = "polars")]
 pub mod polars;
 
 #[derive(Debug)]

@@ -13,6 +13,16 @@ macro_rules! error {
     }};
 }
 
+#[cfg(not(feature = "polars"))]
+fn query(_args: cli::CommonArgs, _query: cli::Query) -> ExitCode {
+    error!("No data processing backend is selected")
+}
+#[cfg(not(feature = "polars"))]
+fn concat(_args: cli::CommonArgs, _query: cli::Concat) -> ExitCode {
+    error!("No data processing backend is selected")
+}
+
+#[cfg(feature = "polars")]
 fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
     let format = match args.format.select_or_infer(&query.path) {
         Some(format) => format,
@@ -24,7 +34,7 @@ fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
         Err(error) => error!("{}: {error}", query.path.as_str()),
     };
 
-    let (state, callback) = mishka::format::polars_batch_function();
+    let (state, callback) = mishka::format::polars::batch_function();
     let df = match df.sink_batches(callback, false, core::num::NonZeroUsize::new(query.chunk_by)) {
         Ok(df) => df,
         Err(error) => error!("Unable to process data: {error}"),
@@ -38,6 +48,7 @@ fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+#[cfg(feature = "polars")]
 fn concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
     let format = match args.format.select_or_infer(&query.path) {
         Some(format) => format,
