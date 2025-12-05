@@ -33,17 +33,26 @@ features = ["timezones"]
 version = "0.52"
 default-features = false
 features = [
+    # lazy and streaming engine helps to minimize RAM usage
     "lazy", "new_streaming",
+    # functional features
     "is_in", "zip_with", "is_first_distinct", "is_last_distinct", "is_between", "unique_counts",
     "row_hash", "diagonal_concat", "partition_by",
+    # formats
     "csv", "parquet", "decompress",
+    # performance optimization
     "performant", "bigidx", "cse",
+    # timestamp types
     "dtype-slim",
 ]
 
 [features]
 #default = ["cli"]
 cli = ["arg"]
+# cloud features
+# AWS requires to populate environment variable (e.g. via aws configure export-credentials --format env)
+aws = ["polars/aws"]
+gcp = ["polars/gcp"]
 
 [profile.release]
 lto = 'thin'
