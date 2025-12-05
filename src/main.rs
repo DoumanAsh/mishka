@@ -33,12 +33,12 @@ fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
         Err(error) => error!("{}: {error}", query.path.0.as_str())
     };
 
-
     let (state, callback) = mishka::format::batch_function();
     let df = match df.sink_batches(callback, false, core::num::NonZeroUsize::new(query.chunk_by)) {
         Ok(df) => df,
         Err(error) => error!("Unable to process data: {error}"),
     };
+
     match df.collect() {
         Ok(_) => println!("# Number of rows={}", state.row_count()),
         Err(error) => error!("Unable to collect data: {error}")

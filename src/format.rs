@@ -88,7 +88,6 @@ pub fn batch_function() -> (&'static State, PlanCallback<crate::DataFrame, bool>
             println!("{}", Schema(df.schema()))
         }
         STATE.row_count.fetch_add(df.height(), atomic::Ordering::AcqRel);
-        df.to_string();
         print!("{}", DataFrame(&df));
         Ok(false)
     }))
