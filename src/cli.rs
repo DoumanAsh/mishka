@@ -10,6 +10,24 @@ pub enum Format {
     Parquet,
 }
 
+impl Format {
+    pub fn select_or_infer(&self, path: &str) -> Option<mishka::FileFormat> {
+        match self {
+            Self::Infer => {
+                if path.ends_with("parquet") {
+                    Some(mishka::FileFormat::Parquet)
+                } else if path.ends_with("csv") {
+                    Some(mishka::FileFormat::Csv)
+                } else {
+                    None
+                }
+            },
+            Self::Csv => Some(mishka::FileFormat::Csv),
+            Self::Parquet => Some(mishka::FileFormat::Parquet),
+        }
+    }
+}
+
 impl FromStr for Format {
     type Err = &'static str;
     #[inline(always)]
@@ -55,10 +73,27 @@ pub struct Query {
 }
 
 #[derive(Args, Debug)]
+///Query data
+pub struct Concat {
+    #[arg(long, default_value = "Format::Infer")]
+    ///Expected file format. Defaults to inferring from path
+    pub format: Format,
+    #[arg(required)]
+    ///Path(s) to a file or directory (may be URI or include wildcard)
+    pub path: Str,
+    #[arg(required)]
+    ///Path to a file to output (may be URI)
+    pub output: Str,
+}
+
+
+#[derive(Args, Debug)]
 ///Possible commands
 pub enum Command {
     ///query data
     Query(Query),
+    ///concat data
+    Concat(Concat),
 }
 
 pub struct CommonArgs {
@@ -114,7 +149,7 @@ pub struct Cli {
     ///Expected file format. Defaults to inferring from path
     pub format: Format,
     #[arg(sub)]
-    ///Command to run. Possible values: query
+    ///Command to run. Possible values: query, concat
     pub command: Command
 }
 

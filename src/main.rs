@@ -14,18 +14,9 @@ macro_rules! error {
 }
 
 fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
-    let format = match args.format {
-        cli::Format::Infer => {
-            if query.path.0.ends_with("parquet") {
-                mishka::FileFormat::Parquet
-            } else if query.path.0.ends_with("csv") {
-                mishka::FileFormat::Csv
-            } else {
-                error!("Unable to infer file format. Please specify --format")
-            }
-        },
-        cli::Format::Csv => mishka::FileFormat::Csv,
-        cli::Format::Parquet => mishka::FileFormat::Parquet,
+    let format = match args.format.select_or_infer(&query.path.0) {
+        Some(format) => format,
+        None => error!("Unable to infer file format. Please specify --format"),
     };
 
     let df = match args.into_query().create_lazy(&query.path.0, format) {
@@ -47,9 +38,61 @@ fn query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
     ExitCode::SUCCESS
 }
 
+fn concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
+    let format = match args.format.select_or_infer(&query.path.0) {
+        Some(format) => format,
+        None => error!("Unable to infer file format. Please specify --format"),
+    };
+    let sink_format = match query.format.select_or_infer(&query.path.0) {
+        Some(format) => format,
+        None => error!("Unable to infer output format. Please specify --format"),
+    };
+
+    let mut df = match args.into_query().create_lazy(&query.path.0, format) {
+        Ok(df) => df.with_new_streaming(true),
+        Err(error) => error!("{}: {error}", query.path.0.as_str())
+    };
+
+    let target = polars::prelude::SinkTarget::Path(polars::prelude::PlPath::new(query.output.0.as_str()));
+    let sink_options = polars::prelude::SinkOptions {
+        sync_on_close: polars::prelude::sync_on_close::SyncOnCloseType::Data,
+        ..Default::default()
+    };
+    df = match sink_format {
+        mishka::FileFormat::Csv => {
+            let options = polars::prelude::CsvWriterOptions {
+                include_header: true,
+                ..Default::default()
+            };
+            match df.sink_csv(target, options, None, sink_options) {
+                Ok(df) => df,
+                Err(error) => error!("{}: Unable to sink: {error}", query.output.0.as_str()),
+            }
+        },
+        mishka::FileFormat::Parquet => {
+            let options = polars::prelude::ParquetWriteOptions {
+                compression: polars::prelude::ParquetCompression::Snappy,
+                ..Default::default()
+            };
+
+            match df.sink_parquet(target, options, None, sink_options) {
+                Ok(df) => df,
+                Err(error) => error!("{}: Unable to sink: {error}", query.output.0.as_str()),
+            }
+        }
+    };
+
+    if let Err(error) = df.collect() {
+        error!("Unable to collect data: {error}")
+    }
+
+    ExitCode::SUCCESS
+}
+
 fn main() -> ExitCode {
     let (args, command) = cli::args().split_parts();
     match command {
-        cli::Command::Query(params) => query(args, params)
+        cli::Command::Query(params) => query(args, params),
+        cli::Command::Concat(params) => concat(args, params),
     }
 }
