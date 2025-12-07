@@ -103,7 +103,7 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
         Some(format) => format,
         None => error!("Unable to infer file format. Please specify --format"),
     };
-    let sink_format = match query.format.select_or_infer(&query.path) {
+    let sink_format = match query.format.select_or_infer(&query.output) {
         Some(format) => format,
         None => error!("Unable to infer output format. Please specify --format"),
     };
@@ -160,7 +160,7 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
         Some(format) => format,
         None => error!("Unable to infer file format. Please specify --format"),
     };
-    let sink_format = match query.format.select_or_infer(&query.path) {
+    let sink_format = match query.format.select_or_infer(&query.output) {
         Some(format) => format,
         None => error!("Unable to infer output format. Please specify --format"),
     };

@@ -55,7 +55,7 @@ pub struct Query {
 }
 
 #[derive(Args, Debug)]
-///Query data
+///Concatenates queried data into single file
 pub struct Concat {
     #[arg(long, default_value = "ExpectFormat::Infer")]
     ///Expected file format. Defaults to inferring from path
@@ -121,7 +121,7 @@ impl CommonArgs {
 }
 
 #[derive(Args, Debug)]
-///mishaka 1.0.0-beta.1
+///mishaka 1.0.0-beta.2
 ///
 ///Utility to work with data files
 pub struct Cli {
