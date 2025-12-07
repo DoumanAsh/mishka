@@ -68,3 +68,34 @@ ARGS:
     <path>    Path(s) to a file or directory (may be URI or include wildcard)
     <output>  Path to a file to output (may be URI)
 ```
+
+## Thoughts
+
+Both libraries provide efficient way to stream data (no detailed performance/memory usage though) which should be sufficient for general use
+
+There are some differences to consider:
+
+### Polars
+
+- Simple and easy to use API
+- Because python API takes precedence, Rust API often is changing and experimental, high risk of breaking changes in future
+- For the same reason API is not uniform, often functionally similar APIs would require completely different approach (see difference between reading parquet and CSV)
+- Regular blocking calls without need of async runtime
+- Can transform underlying data if not supposed (e.g. INT96)
+- Not very well documented rust API, but python bindings are easy to navigate on how to use particular Rust APIs (in addition to having high level docs that show entry points to variety of methods)
+- Heavier dependency wise so slower compile times but code size is as fat as datafusion, so not a big deal
+
+### Datafusion
+
+- A very 'boring' and complex API to navigate
+- Once you understand API, it is very simple to use due to it being mostly uniform
+- All APIs are async, so bootstrapping event loop is necessary (it is not very well documented what sort of tokio's features you need aka time/io)
+- Allows to customize behavior when encountering weird stuff (e.g. to coerce INT96 or not)
+    - Preserving original schema might be important depending on your scenario (e.g. AWS Firehose uses some ancient spark version that writes timestamps in INT96, who knows if Athena requires it or not)
+    - TODO: to be tested on actual data (as I do not have access to it at home lol)
+- Not complete, but very thoughtful documentation straight in Rust API Docs
+- Don't really care for SQL syntax, but it supports it I guess
+    - On side note, a lot of APIs are named after SQL so that's nice
+- Global context can be used to define all configuration parameters
+    - Although it has some shared state behind lock, it is probably more useful for property of being global config
+    - I guess you can rely on shared state to optimize multiple queries? Not sure how useful it would be in practice
