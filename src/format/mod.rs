@@ -1,5 +1,7 @@
 //!Formatting
 
+#[cfg(feature = "datafusion")]
+pub mod datafusion;
 #[cfg(feature = "polars")]
 pub mod polars;
 

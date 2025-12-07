@@ -23,6 +23,7 @@ version = "0.4"
 features = ["std"]
 optional = true
 
+### Polars
 # Temporarily to fix build of polars-lazy until next version
 [dependencies.polars-expr]
 version = "0.52"
@@ -48,14 +49,34 @@ features = [
     "dtype-slim",
 ]
 
+### Datafusion
+[dependencies.datafusion]
+version = "51"
+default-features = false
+optional = true
+features = ["parquet"]
+
+[dependencies.tokio]
+version = "1"
+default-features = false
+features = ["rt"]
+optional = true
+
+[dependencies.futures-util]
+version = "0.3"
+default-features = false
+optional = true
+
 [features]
-#default = ["cli"]
-cli = ["arg"]
+#default = ["cli", "datafusion"]
+# TODO: you might need to add aws/gcp to object_store in case of datafusion
+cli = ["arg", "tokio?/net", "tokio?/time"]
 # cloud features
 # AWS requires to populate environment variable (e.g. via aws configure export-credentials --format env)
 aws = ["polars/aws"]
 gcp = ["polars/gcp"]
 polars = ["dep:polars", "polars-expr"]
+datafusion = ["dep:datafusion", "tokio", "futures-util"]
 
 [profile.release]
 lto = 'thin'

@@ -9,7 +9,11 @@ pub enum Backend {
     ///Polars
     ///
     ///Has limited compatibility with deprecated formats
-    Polars
+    Polars,
+    ///Datafusion
+    ///
+    ///Unique selection always requires at least one `unique_by` argument
+    Datafusion,
 }
 
 impl Backend {
@@ -18,6 +22,12 @@ impl Backend {
     pub const fn is_polars(&self) -> bool {
         matches!(self, Self::Polars)
     }
+
+    #[inline]
+    ///Indicates polars is selected
+    pub const fn is_datafusion(&self) -> bool {
+        matches!(self, Self::Datafusion)
+    }
 }
 
 impl core::str::FromStr for Backend {
@@ -25,6 +35,8 @@ impl core::str::FromStr for Backend {
     fn from_str(text: &str) -> Result<Self, Self::Err> {
         if text.eq_ignore_ascii_case("polars") {
             Ok(Self::Polars)
+        } else if text.eq_ignore_ascii_case("datafusion") {
+            Ok(Self::Datafusion)
         } else {
             Err("Allowed values: polars")
         }

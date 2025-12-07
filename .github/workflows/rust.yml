@@ -21,4 +21,4 @@ jobs:
     uses: DoumanAsh/douman-ci/.github/workflows/rust.yml@master
     with:
       cargo-test-run: false
-      cargo-features: "cli,polars"
+      cargo-features: "cli,polars,datafusion"

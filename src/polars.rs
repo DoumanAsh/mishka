@@ -7,8 +7,7 @@ pub use polars::prelude::{Expr, PlPath, PlSmallStr};
 pub use polars::prelude::{LazyCsvReader, LazyFileListReader, LazyFrame, col};
 pub use polars::prelude::{ScanArgsParquet, SortMultipleOptions, UniqueKeepStrategy};
 
-impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI>
-{
+impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
     ///Scans `path` expecting specified `format`
     pub fn create_lazy_polars(self, path: &str, format: FileFormat) -> Result<LazyFrame, polars::error::PolarsError> {
         let mut df = match format {

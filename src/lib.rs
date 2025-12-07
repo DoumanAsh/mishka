@@ -8,6 +8,8 @@ pub mod cli;
 pub mod format;
 #[cfg(feature = "polars")]
 pub mod polars;
+#[cfg(feature = "datafusion")]
+pub mod datafusion;
 
 #[derive(Debug)]
 ///User's input on file format

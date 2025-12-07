@@ -5,7 +5,7 @@ permissions:
   contents: write
 
 env:
-  CARGO_FEATURE_SELECT: cli,polars
+  CARGO_FEATURE_SELECT: cli,polars,datafusion
 
 on:
   release:
@@ -21,7 +21,7 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v6
 
     - name: Install Rust Unix
       if: runner.os != 'Windows'
@@ -94,7 +94,7 @@ jobs:
         target: [x86_64-unknown-linux-musl, armv7-unknown-linux-musleabihf]
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v6
 
     - name: Install Rust Unix
       run: |
@@ -140,7 +140,7 @@ jobs:
         target: [aarch64-apple-darwin]
 
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v6
 
     - name: Install Rust Unix
       run: |
