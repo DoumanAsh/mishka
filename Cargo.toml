@@ -50,6 +50,11 @@ features = [
 ]
 
 ### Datafusion
+[dependencies.object_store]
+version = "0.12"
+default-features = false
+optional = true
+
 [dependencies.datafusion]
 version = "51"
 default-features = false
@@ -62,21 +67,26 @@ default-features = false
 features = ["rt"]
 optional = true
 
+[dependencies.url]
+version = "2"
+default-features = false
+optional = true
+
 [dependencies.futures-util]
 version = "0.3"
 default-features = false
 optional = true
 
 [features]
-#default = ["cli", "datafusion"]
+#default = ["cli", "datafusion", "aws"]
 # TODO: you might need to add aws/gcp to object_store in case of datafusion
 cli = ["arg", "tokio?/net", "tokio?/time"]
 # cloud features
 # AWS requires to populate environment variable (e.g. via aws configure export-credentials --format env)
-aws = ["polars/aws"]
-gcp = ["polars/gcp"]
+aws = ["polars?/aws", "object_store?/aws"]
+gcp = ["polars?/gcp", "object_store?/gcp"]
 polars = ["dep:polars", "polars-expr"]
-datafusion = ["dep:datafusion", "tokio", "futures-util"]
+datafusion = ["dep:datafusion", "tokio", "futures-util", "object_store", "url"]
 
 [profile.release]
 lto = 'thin'

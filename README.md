@@ -99,3 +99,4 @@ There are some differences to consider:
 - Global context can be used to define all configuration parameters
     - Although it has some shared state behind lock, it is probably more useful for property of being global config
     - I guess you can rely on shared state to optimize multiple queries? Not sure how useful it would be in practice
+- AWS & GCP features of object_store require manual enabling which is not convenient comparing to `polars`
