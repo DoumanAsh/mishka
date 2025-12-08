@@ -91,9 +91,8 @@ There are some differences to consider:
 - A very 'boring' and complex API to navigate
 - Once you understand API, it is very simple to use due to it being mostly uniform
 - All APIs are async, so bootstrapping event loop is necessary (it is not very well documented what sort of tokio's features you need aka time/io)
-- Allows to customize behavior when encountering weird stuff (e.g. to coerce INT96 or not)
-    - Preserving original schema might be important depending on your scenario (e.g. AWS Firehose uses some ancient spark version that writes timestamps in INT96, who knows if Athena requires it or not)
-    - TODO: to be tested on actual data (as I do not have access to it at home lol)
+- Allows to customize behavior when encountering weird stuff (e.g. how to coerce INT96)
+    - No way to avoid transform underlying data if not supposed by Arrow (e.g. INT96)
 - Not complete, but very thoughtful documentation straight in Rust API Docs
 - Don't really care for SQL syntax, but it supports it I guess
     - On side note, a lot of APIs are named after SQL so that's nice
@@ -101,4 +100,3 @@ There are some differences to consider:
     - Although it has some shared state behind lock, it is probably more useful for property of being global config
     - I guess you can rely on shared state to optimize multiple queries? Not sure how useful it would be in practice
 - AWS & GCP features of object_store require manual enabling which is not convenient comparing to `polars`
-- Can transform underlying data if not supposed (e.g. INT96)
