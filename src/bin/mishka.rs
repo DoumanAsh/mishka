@@ -189,6 +189,10 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
                     global: datafusion::config::ParquetOptions {
                         compression: Some("snappy".to_owned()),
                         coerce_int96: None,
+                        //Minimize overhead of datafusion's arrow format
+                        statistics_enabled: Some("none".to_owned()),
+                        skip_arrow_metadata: true,
+                        created_by: String::new(),
                         ..Default::default()
                     },
                     ..Default::default()
