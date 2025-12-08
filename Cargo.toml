@@ -1,6 +1,6 @@
 [package]
 name = "mishka"
-version = "1.0.0-beta.2"
+version = "1.0.0-beta.3"
 edition = "2024"
 description = "Utility to scan data files"
 license = "BSL-1.0"

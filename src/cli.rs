@@ -142,7 +142,7 @@ impl CommonArgs {
 }
 
 #[derive(Args, Debug)]
-///mishaka 1.0.0-beta.2
+///mishaka 1.0.0-beta.3
 ///
 ///Utility to work with data files
 pub struct Cli {

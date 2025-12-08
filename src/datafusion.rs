@@ -110,7 +110,7 @@ fn create_runtime(_path: &str) -> Result<Arc<RuntimeEnv>, DataFusionError> {
 
     #[cfg(feature = "gcp")]
     if _path.starts_with("gs://") {
-        let url: url::Url = _path.try_into().map_err(|error| DataFusionError::External(Box::new(error)))?;
+        let mut url: url::Url = _path.try_into().map_err(|error| DataFusionError::External(Box::new(error)))?;
         let bucket_name = match url.host_str() {
             Some(bucket_name) => bucket_name.to_owned(),
             None => return Err(DataFusionError::External(Box::new(BucketNameMissing))),

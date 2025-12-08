@@ -13,22 +13,23 @@ Mostly written to evaluate both Rust libraries.
 Common
 
 ```
-mishaka 1.0.0-beta.2
+mishaka 1.0.0-beta.3
 
 Utility to work with data files
 
 USAGE: [OPTIONS] <command>
 
 OPTIONS:
-    -h,  --help                      Prints this help information
-         --backend <backend>         Specifies backend to use. Defaults to polars
-         --select <select>...        List of column names to select
-         --sort <sort>...            List of column names to sort in order
-         --sort_desc                 Specifies descending order for sort. Defaults to ascending.
-         --unique                    Specify to select unique
-         --unique_by <unique_by>...  Specify columns to use to consider for uniqueness
-         --stable                    Specify to use stable operations
-         --format <format>           Expected file format. Defaults to inferring from path
+    -h,  --help                         Prints this help information
+         --backend <backend>            Specifies backend to use. Defaults to polars
+         --select <select>...           List of column names to select
+         --sort <sort>...               List of column names to sort in order
+         --sort_desc                    Specifies descending order for sort. Defaults to ascending.
+         --unique                       Specify to select unique
+         --unique_by <unique_by>...     Specify columns to use to consider for uniqueness
+         --stable                       Specify to use stable operations
+         --format <format>              Expected file format. Defaults to inferring from path
+         --coerce_int96 <coerce_int96>  Specifies time unit for int96. Defaults to nanosecond
 
 ARGS:
     <command>  Command to run. Possible values: query, concat
