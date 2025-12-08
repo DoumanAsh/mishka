@@ -5,7 +5,7 @@ permissions:
   contents: write
 
 env:
-  CARGO_FEATURE_SELECT: cli,polars,datafusion
+  CARGO_FEATURE_SELECT: cli,polars,datafusion,aws,gcp
 
 on:
   release:
