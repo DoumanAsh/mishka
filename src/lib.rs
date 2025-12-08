@@ -59,6 +59,53 @@ impl core::str::FromStr for ExpectFormat {
     }
 }
 
+#[derive(Debug, Copy, Clone)]
+///INT96 timestamp resolution to assume
+///
+///Default value is nanosecond
+pub enum Int96Timestamp {
+    ///Nanosecond
+    Ns,
+    ///Microsecond
+    Us,
+    ///Millisecond
+    Ms,
+    ///Second
+    S
+}
+
+impl Int96Timestamp {
+    #[inline]
+    ///Creates default value
+    pub const fn new() -> Self {
+        Self::Ns
+    }
+
+    ///Returns whether default value is specified
+    pub const fn is_default(&self) -> bool {
+        matches!(self, Self::Ns)
+    }
+
+    #[inline]
+    ///Returns unit name
+    pub const fn as_unit_name(&self) -> &'static str {
+        match self {
+            Self::Ns => "ns",
+            Self::Us => "us",
+            Self::Ms => "ms",
+            Self::S => "s",
+        }
+    }
+}
+
+impl Default for Int96Timestamp {
+    #[inline]
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug, Copy, Clone)]
 ///Available file format
 pub enum FileFormat {
     ///CSV
@@ -91,4 +138,8 @@ pub struct Query<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<It
     pub sort_by: SBI,
     ///If specified request deduplication data frames
     pub unique: Option<Unique<UCI>>,
+    ///Specifies coercing method for int96.
+    ///
+    ///Prefer default value unless you know what you're doing
+    pub coerce_int96: Int96Timestamp,
 }

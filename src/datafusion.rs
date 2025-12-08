@@ -28,8 +28,11 @@ fn apply_select_sort_on_non_distinct_query(mut df: DataFrame, select: impl Exact
 
 impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
     ///Scans `path` expecting specified `format`
-    pub async fn create_lazy_datafusion(self, ctx: SessionConfig, path: &str, format: FileFormat) -> Result<DataFrame, DataFusionError> {
+    pub async fn create_lazy_datafusion(self, mut ctx: SessionConfig, path: &str, format: FileFormat) -> Result<DataFrame, DataFusionError> {
         let env = create_runtime(path)?;
+        if !self.coerce_int96.is_default() {
+            ctx.options_mut().execution.parquet.coerce_int96 = Some(self.coerce_int96.as_unit_name().to_owned());
+        }
         let ctx = SessionContext::new_with_config_rt(ctx, env);
 
         let mut df = match format {

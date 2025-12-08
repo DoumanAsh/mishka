@@ -1,7 +1,7 @@
 //! Command line arguments
 use arg::Args;
 
-use crate::ExpectFormat;
+use crate::{ExpectFormat, Int96Timestamp};
 
 #[derive(Copy, Clone, Debug)]
 ///Backend to use
@@ -42,6 +42,24 @@ impl core::str::FromStr for Backend {
         }
     }
 }
+
+impl core::str::FromStr for Int96Timestamp {
+    type Err = &'static str;
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        if text.eq_ignore_ascii_case("ns") || text.eq_ignore_ascii_case("nanosecond") {
+            Ok(Self::Ns)
+        } else if text.eq_ignore_ascii_case("us") || text.eq_ignore_ascii_case("microsecond") {
+            Ok(Self::Us)
+        } else if text.eq_ignore_ascii_case("ms") || text.eq_ignore_ascii_case("millisecond") {
+            Ok(Self::Ms)
+        } else if text.eq_ignore_ascii_case("s") || text.eq_ignore_ascii_case("second") {
+            Ok(Self::S)
+        } else {
+            Err("Allowed values: ns, us, ms, s")
+        }
+    }
+}
+
 
 #[derive(Args, Debug)]
 ///Query data
@@ -95,6 +113,8 @@ pub struct CommonArgs {
     pub stable: bool,
     ///Expected file format. Defaults to inferring from path
     pub format: ExpectFormat,
+    ///Specifies time unit for int96. Defaults to nanosecond
+    pub coerce_int96: Int96Timestamp,
 }
 
 impl CommonArgs {
@@ -116,6 +136,7 @@ impl CommonArgs {
                 columns: self.unique_by.into_iter(),
                 is_stable: self.stable,
             }),
+            coerce_int96: self.coerce_int96,
         }
     }
 }
@@ -149,6 +170,9 @@ pub struct Cli {
     #[arg(long, default_value = "ExpectFormat::Infer")]
     ///Expected file format. Defaults to inferring from path
     pub format: ExpectFormat,
+    #[arg(long, default_value = "Int96Timestamp::new()")]
+    ///Specifies time unit for int96. Defaults to nanosecond
+    pub coerce_int96: Int96Timestamp,
     #[arg(sub)]
     ///Command to run. Possible values: query, concat
     pub command: Command,
@@ -166,6 +190,7 @@ impl Cli {
             unique_by,
             stable,
             format,
+            coerce_int96,
             command,
             backend
         } = self;
@@ -179,6 +204,7 @@ impl Cli {
             unique_by,
             stable,
             format,
+            coerce_int96,
             backend
         };
         (common, command)
