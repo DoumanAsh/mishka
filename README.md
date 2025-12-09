@@ -85,6 +85,7 @@ There are some differences to consider:
 - Can transform underlying data if not supposed (e.g. INT96)
 - Not very well documented rust API, but python bindings are easy to navigate on how to use particular Rust APIs (in addition to having high level docs that show entry points to variety of methods)
 - Heavier dependency wise so slower compile times but code size is as fat as datafusion, so not a big deal
+- Hard-coded to write footer into parquet, resulting in output with overhead
 
 ### Datafusion
 
