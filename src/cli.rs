@@ -75,6 +75,9 @@ pub struct Query {
 #[derive(Args, Debug)]
 ///Concatenates queried data into single file
 pub struct Concat {
+    #[arg(long)]
+    ///List of column names to partition by (in order)
+    pub partition_by: Vec<String>,
     #[arg(long, default_value = "ExpectFormat::Infer")]
     ///Expected file format. Defaults to inferring from path
     pub format: ExpectFormat,

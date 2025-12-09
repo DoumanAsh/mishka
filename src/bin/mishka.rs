@@ -113,18 +113,33 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
         Err(error) => error!("{}: {error}", query.path.as_str()),
     };
 
-    let target = polars::prelude::SinkTarget::Path(polars::prelude::PlPath::new(query.output.as_str()));
+    let partition_variant = if query.partition_by.is_empty() {
+        None
+    } else {
+        Some(polars::prelude::PartitionVariant::ByKey {
+            key_exprs: query.partition_by.into_iter().map(|col| polars::prelude::col(col)).collect(),
+            include_key: true
+        })
+    };
+
+    let target = polars::prelude::PlPath::new(query.output.as_str());
     let sink_options = polars::prelude::SinkOptions {
         sync_on_close: polars::prelude::sync_on_close::SyncOnCloseType::Data,
+        mkdir: true,
         ..Default::default()
     };
+
     df = match sink_format {
         mishka::FileFormat::Csv => {
             let options = polars::prelude::CsvWriterOptions {
                 include_header: true,
                 ..Default::default()
             };
-            match df.sink_csv(target, options, None, sink_options) {
+            let result = match partition_variant {
+                Some(variant) => df.sink_csv_partitioned(target.into(), None, variant, options, None, sink_options, None, None),
+                None => df.sink_csv(polars::prelude::SinkTarget::Path(target), options, None, sink_options),
+            };
+            match result {
                 Ok(df) => df,
                 Err(error) => error!("{}: Unable to sink: {error}", query.output.as_str()),
             }
@@ -135,7 +150,12 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
                 ..Default::default()
             };
 
-            match df.sink_parquet(target, options, None, sink_options) {
+            let result = match partition_variant {
+                Some(variant) => df.sink_parquet_partitioned(target.into(), None, variant, options, None, sink_options, None, None),
+                None => df.sink_parquet(polars::prelude::SinkTarget::Path(target), options, None, sink_options),
+            };
+
+            match result {
                 Ok(df) => df,
                 Err(error) => error!("{}: Unable to sink: {error}", query.output.as_str()),
             }
@@ -151,6 +171,12 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
 
 #[cfg(feature = "datafusion")]
 fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
+    let df_opts = if query.partition_by.is_empty() {
+        mishka::datafusion::DataFrameWriteOptions::new().with_single_file_output(true)
+    } else {
+        mishka::datafusion::DataFrameWriteOptions::new().with_partition_by(query.partition_by)
+    };
+
     let rt = match tokio::runtime::Builder::new_current_thread().enable_time().enable_io().build() {
         Ok(rt) => rt,
         Err(error) => error!("Cannot initialize event loop: {error}"),
@@ -168,11 +194,10 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
     let cfg = mishka::datafusion::SessionConfig::new();
     rt.block_on(async move {
         let df = match args.into_query().create_lazy_datafusion(cfg, &query.path, format).await {
-            Ok(df) => df,
+            Ok(result) => result,
             Err(error) => error!("{}: {error}", query.path)
         };
 
-        let df_opts = mishka::datafusion::DataFrameWriteOptions::new().with_single_file_output(true);
         match sink_format {
             mishka::FileFormat::Csv => {
                 let csv_options = datafusion::config::CsvOptions {
