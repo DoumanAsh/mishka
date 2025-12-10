@@ -149,8 +149,8 @@ impl CommonArgs {
 ///
 ///Utility to work with data files
 pub struct Cli {
-    #[arg(long, default_value = "Backend::Polars")]
-    ///Specifies backend to use. Defaults to polars
+    #[arg(long, default_value = "Backend::Datafusion")]
+    ///Specifies backend to use. Defaults to datafusion
     pub backend: Backend,
     #[arg(long)]
     ///List of column names to select
