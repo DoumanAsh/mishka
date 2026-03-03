@@ -56,7 +56,7 @@ default-features = false
 optional = true
 
 [dependencies.datafusion]
-version = "51"
+version = "52"
 default-features = false
 optional = true
 features = ["parquet"]
