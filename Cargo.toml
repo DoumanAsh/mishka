@@ -25,6 +25,7 @@ optional = true
 
 ### Polars
 # Temporarily to fix build of polars-lazy until next version
+# Do not upgrade to 0.53 as it pins chrono making it incompatible with datafusion
 [dependencies.polars-expr]
 version = "0.52"
 default-features = false
@@ -51,12 +52,12 @@ features = [
 
 ### Datafusion
 [dependencies.object_store]
-version = "0.12"
+version = "0.13"
 default-features = false
 optional = true
 
 [dependencies.datafusion]
-version = "52"
+version = "53"
 default-features = false
 optional = true
 features = ["parquet"]
