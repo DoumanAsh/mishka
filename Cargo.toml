@@ -23,22 +23,13 @@ version = "0.4"
 features = ["std"]
 optional = true
 
-### Polars
-# Temporarily to fix build of polars-lazy until next version
-# Do not upgrade to 0.53 as it pins chrono making it incompatible with datafusion
-[dependencies.polars-expr]
-version = "0.52"
-default-features = false
-optional = true
-features = ["timezones"]
-
 [dependencies.polars]
-version = "0.52"
+version = "0.54"
 default-features = false
 optional = true
 features = [
     # lazy and streaming engine helps to minimize RAM usage
-    "lazy", "new_streaming",
+    "lazy", "streaming", "strings",
     # functional features
     "is_in", "zip_with", "is_first_distinct", "is_last_distinct", "is_between", "unique_counts",
     "row_hash", "diagonal_concat", "partition_by",
@@ -57,7 +48,7 @@ default-features = false
 optional = true
 
 [dependencies.datafusion]
-version = "53"
+version = "54"
 default-features = false
 optional = true
 features = ["parquet"]
@@ -86,7 +77,7 @@ cli = ["arg", "tokio?/net", "tokio?/time"]
 # AWS requires to populate environment variable (e.g. via aws configure export-credentials --format env)
 aws = ["polars?/aws", "object_store?/aws"]
 gcp = ["polars?/gcp", "object_store?/gcp"]
-polars = ["dep:polars", "polars-expr"]
+polars = ["dep:polars"]
 datafusion = ["dep:datafusion", "tokio", "futures-util", "object_store", "url"]
 
 [profile.release]

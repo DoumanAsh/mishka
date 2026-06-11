@@ -26,7 +26,7 @@ impl fmt::Display for Schema<'_, pl::prelude::Schema> {
 impl fmt::Display for DataFrame<'_, pl::prelude::DataFrame> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         let height = self.0.height();
-        let columns = self.0.get_columns();
+        let columns = self.0.columns();
         for idx in 0..height {
             let mut columns = columns.iter();
             if let Some(column) = columns.next() {

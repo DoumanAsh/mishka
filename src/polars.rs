@@ -3,7 +3,7 @@
 use super::{FileFormat, Query, SortBy};
 
 pub use polars::error::PolarsError;
-pub use polars::prelude::{Expr, PlPath, PlSmallStr};
+pub use polars::prelude::{Expr, PlRefPath, PlSmallStr};
 pub use polars::prelude::{LazyCsvReader, LazyFileListReader, LazyFrame, col};
 pub use polars::prelude::{ScanArgsParquet, SortMultipleOptions, UniqueKeepStrategy};
 
@@ -62,7 +62,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
 
 ///Scan parquet through `path`
 pub fn scan_parquet(path: &str) -> Result<LazyFrame, polars::error::PolarsError> {
-    let uri = PlPath::new(path);
+    let uri = PlRefPath::new(path);
     let args = ScanArgsParquet {
         use_statistics: true,
         cache: true,
@@ -77,7 +77,7 @@ pub fn scan_parquet(path: &str) -> Result<LazyFrame, polars::error::PolarsError>
 pub fn scan_csv(path: &str) -> Result<LazyFrame, polars::error::PolarsError> {
     use LazyFileListReader;
 
-    let path = PlPath::new(path);
+    let path = PlRefPath::new(path);
     LazyCsvReader::new(path)
         .with_glob(true)
         .with_cache(true)

@@ -46,7 +46,7 @@ fn polars_query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
     };
 
     let df = match args.into_query().create_lazy_polars(&query.path, format) {
-        Ok(df) => df.with_new_streaming(true),
+        Ok(df) => df.with_streaming(true),
         Err(error) => error!("{}: {error}", query.path.as_str()),
     };
 
@@ -108,41 +108,44 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
         None => error!("Unable to infer output format. Please specify --format"),
     };
 
-    let mut df = match args.into_query().create_lazy_polars(&query.path, format) {
-        Ok(df) => df.with_new_streaming(true),
+    let df = match args.into_query().create_lazy_polars(&query.path, format) {
+        Ok(df) => df.with_streaming(true),
         Err(error) => error!("{}: {error}", query.path.as_str()),
     };
 
-    let partition_variant = if query.partition_by.is_empty() {
-        None
+    let target = polars::prelude::PlRefPath::new(query.output.as_str());
+
+    let destination = if query.partition_by.is_empty() {
+        polars::prelude::SinkDestination::File {
+            target: polars::prelude::SinkTarget::Path(target),
+        }
     } else {
-        Some(polars::prelude::PartitionVariant::ByKey {
-            key_exprs: query.partition_by.into_iter().map(|col| polars::prelude::col(col)).collect(),
-            include_key: true
-        })
+        polars::prelude::SinkDestination::Partitioned {
+            base_path: target,
+            file_path_provider: None,
+            partition_strategy: polars::prelude::PartitionStrategy::Keyed {
+                keys: query.partition_by.into_iter().map(|col| polars::prelude::col(col)).collect(),
+                include_keys: true,
+                keys_pre_grouped: true,
+            },
+            max_rows_per_file: 65_000,
+            approximate_bytes_per_file: (1 << 64) - 1
+        }
     };
 
-    let target = polars::prelude::PlPath::new(query.output.as_str());
-    let sink_options = polars::prelude::SinkOptions {
+    let sink_options = polars::prelude::UnifiedSinkArgs {
         sync_on_close: polars::prelude::sync_on_close::SyncOnCloseType::Data,
         mkdir: true,
         ..Default::default()
     };
 
-    df = match sink_format {
+    let format = match sink_format {
         mishka::FileFormat::Csv => {
             let options = polars::prelude::CsvWriterOptions {
                 include_header: true,
                 ..Default::default()
             };
-            let result = match partition_variant {
-                Some(variant) => df.sink_csv_partitioned(target.into(), None, variant, options, None, sink_options, None, None),
-                None => df.sink_csv(polars::prelude::SinkTarget::Path(target), options, None, sink_options),
-            };
-            match result {
-                Ok(df) => df,
-                Err(error) => error!("{}: Unable to sink: {error}", query.output.as_str()),
-            }
+            polars::prelude::FileWriteFormat::Csv(options)
         }
         mishka::FileFormat::Parquet => {
             let options = polars::prelude::ParquetWriteOptions {
@@ -150,20 +153,15 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
                 ..Default::default()
             };
 
-            let result = match partition_variant {
-                Some(variant) => df.sink_parquet_partitioned(target.into(), None, variant, options, None, sink_options, None, None),
-                None => df.sink_parquet(polars::prelude::SinkTarget::Path(target), options, None, sink_options),
-            };
-
-            match result {
-                Ok(df) => df,
-                Err(error) => error!("{}: Unable to sink: {error}", query.output.as_str()),
-            }
+            polars::prelude::FileWriteFormat::Parquet(std::sync::Arc::new(options))
         }
     };
 
-    if let Err(error) = df.collect() {
-        error!("Unable to collect data: {error}")
+    match df.sink(destination, format, sink_options) {
+        Ok(df) => if let Err(error) = df.collect() {
+            error!("Unable to collect data: {error}")
+        },
+        Err(error) => error!("{}: Unable to sink: {error}", query.output.as_str()),
     }
 
     ExitCode::SUCCESS
