@@ -1,6 +1,6 @@
 [package]
 name = "mishka"
-version = "1.0.0-beta.3"
+version = "1.0.0-beta.5"
 edition = "2024"
 description = "Utility to scan data files"
 license = "BSL-1.0"
@@ -19,7 +19,7 @@ name = "mishka"
 required-features = ["cli"]
 
 [dependencies.arg]
-version = "0.4"
+version = "0.4.5"
 features = ["std"]
 optional = true
 

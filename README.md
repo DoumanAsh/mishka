@@ -13,15 +13,14 @@ Mostly written to evaluate both Rust libraries.
 Common
 
 ```
-mishaka 1.0.0-beta.3
-
+mishka 1.0.0-beta.5
 Utility to work with data files
 
 USAGE: [OPTIONS] <command>
 
 OPTIONS:
     -h,  --help                         Prints this help information
-         --backend <backend>            Specifies backend to use. Defaults to polars
+         --backend <backend>            Specifies backend to use. Defaults to datafusion. Can be set via env MISHKA_BACKEND
          --select <select>...           List of column names to select
          --sort <sort>...               List of column names to sort in order
          --sort_desc                    Specifies descending order for sort. Defaults to ascending.

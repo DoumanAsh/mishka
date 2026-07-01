@@ -145,11 +145,10 @@ impl CommonArgs {
 }
 
 #[derive(Args, Debug)]
-///mishaka 1.0.0-beta.3
-///
+#[arg(infer_name, env_prefix = "MISHKA")]
 ///Utility to work with data files
 pub struct Cli {
-    #[arg(long, default_value = "Backend::Datafusion")]
+    #[arg(long, env_value, default_value = "Backend::Datafusion")]
     ///Specifies backend to use. Defaults to datafusion
     pub backend: Backend,
     #[arg(long)]

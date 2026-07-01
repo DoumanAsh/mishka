@@ -129,7 +129,7 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
                 keys_pre_grouped: true,
             },
             max_rows_per_file: 65_000,
-            approximate_bytes_per_file: (1 << 64) - 1
+            approximate_bytes_per_file: 2 * 1024 * 1024 * 1024
         }
     };
 
