@@ -1,0 +1,11 @@
+{
+    "cargo": {
+        "features": [
+            "polars",
+            "datafusion",
+            "gcp",
+            "aws",
+            "cli"
+        ]
+    }
+}
