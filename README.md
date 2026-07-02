@@ -81,7 +81,8 @@ There are some differences to consider:
 
 - Simple and easy to use API
 - Because python API takes precedence, Rust API often is changing and experimental, high risk of breaking changes in future
-- For the same reason API is not uniform, often functionally similar APIs would require completely different approach (see difference between reading parquet and CSV)
+- ~For the same reason API is not uniform, often functionally similar APIs would require completely different approach (see difference between reading parquet and CSV)~
+    - This has been improved and now API is more or less uniform
 - Regular blocking calls without need of async runtime
 - Can transform underlying data if not supposed (e.g. INT96)
 - Not very well documented rust API, but python bindings are easy to navigate on how to use particular Rust APIs (in addition to having high level docs that show entry points to variety of methods)
