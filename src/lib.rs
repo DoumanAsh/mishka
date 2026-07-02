@@ -3,6 +3,7 @@
 #![warn(missing_docs)]
 #![allow(clippy::style)]
 
+pub mod utils;
 #[cfg(feature = "cli")]
 pub mod cli;
 pub mod format;
@@ -112,6 +113,16 @@ pub enum FileFormat {
     Csv,
     ///Parquet (including compressed)
     Parquet,
+}
+
+impl FileFormat {
+    ///Returns file extension
+    pub const fn extension(&self) -> &'static str {
+        match self {
+            Self::Csv => "csv",
+            Self::Parquet => "parquet",
+        }
+    }
 }
 
 ///Unique scan

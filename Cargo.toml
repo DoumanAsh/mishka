@@ -86,3 +86,10 @@ opt-level = 3
 codegen-units = 1
 strip = true
 debug = false
+
+# Patch contains new config option
+# Details: https://github.com/apache/datafusion/pull/19262
+[patch.crates-io.datafusion]
+git = "https://github.com/DoumanAsh/datafusion"
+branch = "customize_writer_file_name_gen"
+#path = "../datafusion/datafusion/core"

@@ -81,6 +81,9 @@ pub struct Concat {
     #[arg(long, default_value = "ExpectFormat::Infer")]
     ///Expected file format. Defaults to inferring from path
     pub format: ExpectFormat,
+    #[arg(long, default_value)]
+    ///Optional common prefix for output files. Applied to partitioned output only.
+    pub prefix: String,
     #[arg(required)]
     ///Path(s) to a file or directory (may be URI or include wildcard)
     pub path: String,

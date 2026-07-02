@@ -61,8 +61,10 @@ concat: Concatenates queried data into single file
 USAGE: [OPTIONS] <path> <output>
 
 OPTIONS:
-    -h,  --help             Prints this help information
-         --format <format>  Expected file format. Defaults to inferring from path
+    -h,  --help                            Prints this help information
+         --partition_by <partition_by>...  List of column names to partition by (in order)
+         --format <format>                 Expected file format. Defaults to inferring from path
+         --prefix <prefix>                 Optional common prefix for output files. Applied to partitioned output only.
 
 ARGS:
     <path>    Path(s) to a file or directory (may be URI or include wildcard)

@@ -77,7 +77,9 @@ fn datafusion_query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
     };
 
     let mut cfg = mishka::datafusion::SessionConfig::new();
-    cfg.options_mut().execution.batch_size = query.chunk_by;
+    if let Ok(chunk_by) = datafusion::config::ConfigNonZeroUsize::try_new(query.chunk_by) {
+        cfg.options_mut().execution.batch_size = chunk_by;
+    }
     rt.block_on(async move {
         let df = match args.into_query().create_lazy_datafusion(cfg, &query.path, format).await {
             Ok(df) => df,
@@ -99,6 +101,9 @@ fn datafusion_query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
 
 #[cfg(feature = "polars")]
 fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
+    use core::fmt::Write;
+    use polars::prelude::file_provider;
+
     let format = match args.format.select_or_infer(&query.path) {
         Some(format) => format,
         None => error!("Unable to infer file format. Please specify --format"),
@@ -120,9 +125,34 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
             target: polars::prelude::SinkTarget::Path(target),
         }
     } else {
+        let timestamp = mishka::utils::unit_now().as_secs();
+        let mut prefix = query.prefix;
+        if !prefix.is_empty() && !prefix.ends_with('-') {
+            prefix.push('-');
+        }
+        let file_extension = sink_format.extension();
+        let partition_by = query.partition_by.clone();
+        let file_provider_cb = move |file_provider::FileProviderArgs { index_in_partition, partition_keys }: file_provider::FileProviderArgs| -> polars::prelude::PolarsResult<file_provider::FileProviderReturn> {
+            //Despite its name, partition_keys contains values only
+            //So align these values with query.partition_by list as partition_keys should be in the same order with column per value
+            let mut result = String::new();
+            for (idx, key) in partition_by.iter().enumerate() {
+                let _ = match partition_keys.columns().get(idx).and_then(|column| column.get(0).ok()) {
+                    Some(polars::prelude::AnyValue::Null) | None => write!(&mut result, "{key}=null/"),
+                    //Special handling for strings to avoid default quotes in Display impl
+                    Some(polars::prelude::AnyValue::String(value)) => write!(&mut result, "{key}={value}/"),
+                    Some(polars::prelude::AnyValue::StringOwned(value)) => write!(&mut result, "{key}={value}/"),
+                    //Other values can be formatted as it is
+                    Some(value) => write!(&mut result, "{key}={value}/"),
+                };
+            }
+            let _ = write!(&mut result, "{prefix}{timestamp}-{index_in_partition:03}.{file_extension}");
+            Ok(file_provider::FileProviderReturn::Path(result))
+        };
+        let file_provider_cb = polars::prelude::PlanCallback::Rust(polars::prelude::SpecialEq::new(std::sync::Arc::new(file_provider_cb)));
         polars::prelude::SinkDestination::Partitioned {
             base_path: target,
-            file_path_provider: None,
+            file_path_provider: Some(polars::prelude::file_provider::FileProviderType::Function(file_provider_cb)),
             partition_strategy: polars::prelude::PartitionStrategy::Keyed {
                 keys: query.partition_by.into_iter().map(|col| polars::prelude::col(col)).collect(),
                 include_keys: true,
@@ -169,6 +199,8 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
 
 #[cfg(feature = "datafusion")]
 fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
+    use core::fmt::Write;
+
     let df_opts = if query.partition_by.is_empty() {
         mishka::datafusion::DataFrameWriteOptions::new().with_single_file_output(true)
     } else {
@@ -189,7 +221,19 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
         None => error!("Unable to infer output format. Please specify --format"),
     };
 
-    let cfg = mishka::datafusion::SessionConfig::new();
+    let mut cfg = mishka::datafusion::SessionConfig::new();
+    let timestamp = mishka::utils::unit_now().as_secs();
+
+    let options = cfg.options_mut();
+    options.execution.partitioned_file_prefix_name.clear();
+
+    let prefix = query.prefix.trim();
+    let _ = if prefix.is_empty() {
+        write!(&mut options.execution.partitioned_file_prefix_name, "{timestamp}-")
+    } else {
+        write!(&mut options.execution.partitioned_file_prefix_name, "{prefix}-{timestamp}-")
+    };
+
     rt.block_on(async move {
         let df = match args.into_query().create_lazy_datafusion(cfg, &query.path, format).await {
             Ok(result) => result,
