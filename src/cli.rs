@@ -78,6 +78,9 @@ pub struct Concat {
     #[arg(long)]
     ///List of column names to partition by (in order)
     pub partition_by: Vec<String>,
+    #[arg(long, default_value)]
+    ///Specifies to keep partitioned columns in output. By default partitioned columns are excluded
+    pub keep_partitions: bool,
     #[arg(long, default_value = "ExpectFormat::Infer")]
     ///Expected file format. Defaults to inferring from path
     pub format: ExpectFormat,
@@ -121,6 +124,8 @@ pub struct CommonArgs {
     pub format: ExpectFormat,
     ///Specifies time unit for int96. Defaults to nanosecond
     pub coerce_int96: Int96Timestamp,
+    ///Specifies whether to keep partitioned columns
+    pub keep_partition: bool
 }
 
 impl CommonArgs {
@@ -143,6 +148,7 @@ impl CommonArgs {
                 is_stable: self.stable,
             }),
             coerce_int96: self.coerce_int96,
+            keep_partition: self.keep_partition,
         }
     }
 }
@@ -210,7 +216,8 @@ impl Cli {
             stable,
             format,
             coerce_int96,
-            backend
+            backend,
+            keep_partition: true,
         };
         (common, command)
     }

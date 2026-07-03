@@ -31,7 +31,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
     pub async fn create_lazy_datafusion(self, mut ctx: SessionConfig, path: &str, format: FileFormat) -> Result<DataFrame, DataFusionError> {
         {
             let options = ctx.options_mut();
-            options.execution.keep_partition_by_columns = true;
+            options.execution.keep_partition_by_columns = self.keep_partition;
             if !self.coerce_int96.is_default() {
                 options.execution.parquet.coerce_int96 = Some(self.coerce_int96.as_unit_name().to_owned());
             }

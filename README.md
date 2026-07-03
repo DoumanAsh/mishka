@@ -13,7 +13,7 @@ Mostly written to evaluate both Rust libraries.
 Common
 
 ```
-mishka 1.0.0-beta.5
+mishka 1.0.0-beta.7
 Utility to work with data files
 
 USAGE: [OPTIONS] <command>
@@ -63,6 +63,7 @@ USAGE: [OPTIONS] <path> <output>
 OPTIONS:
     -h,  --help                            Prints this help information
          --partition_by <partition_by>...  List of column names to partition by (in order)
+         --keep_partitions                 Specifies to keep partitioned columns in output. By default partitioned columns are excluded
          --format <format>                 Expected file format. Defaults to inferring from path
          --prefix <prefix>                 Optional common prefix for output files. Applied to partitioned output only.
 

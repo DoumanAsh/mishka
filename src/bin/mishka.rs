@@ -113,7 +113,7 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
         None => error!("Unable to infer output format. Please specify --format"),
     };
 
-    let df = match args.into_query().create_lazy_polars(&query.path, format) {
+    let df = match args.into_query().with_keep_partition(query.keep_partitions).create_lazy_polars(&query.path, format) {
         Ok(df) => df.with_streaming(true),
         Err(error) => error!("{}: {error}", query.path.as_str()),
     };
@@ -155,7 +155,7 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
             file_path_provider: Some(polars::prelude::file_provider::FileProviderType::Function(file_provider_cb)),
             partition_strategy: polars::prelude::PartitionStrategy::Keyed {
                 keys: query.partition_by.into_iter().map(|col| polars::prelude::col(col)).collect(),
-                include_keys: true,
+                include_keys: query.keep_partitions,
                 keys_pre_grouped: true,
             },
             max_rows_per_file: 65_000,
@@ -235,7 +235,7 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
     };
 
     rt.block_on(async move {
-        let df = match args.into_query().create_lazy_datafusion(cfg, &query.path, format).await {
+        let df = match args.into_query().with_keep_partition(query.keep_partitions).create_lazy_datafusion(cfg, &query.path, format).await {
             Ok(result) => result,
             Err(error) => error!("{}: {error}", query.path)
         };

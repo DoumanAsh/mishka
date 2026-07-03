@@ -153,4 +153,17 @@ pub struct Query<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<It
     ///
     ///Prefer default value unless you know what you're doing
     pub coerce_int96: Int96Timestamp,
+    ///Specifies whether to keep partitioned columns
+    pub keep_partition: bool
+}
+
+impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
+    #[inline]
+    ///Modifies whether to keep partitions or not
+    ///
+    ///By default it keeps.
+    pub fn with_keep_partition(mut self, keep_partition: bool) -> Self {
+        self.keep_partition = keep_partition;
+        self
+    }
 }
