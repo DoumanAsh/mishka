@@ -1,5 +1,6 @@
 //!Datafusion module
 
+use std::path::Path;
 use std::sync::Arc;
 
 use super::{FileFormat, Query, SortBy};
@@ -12,6 +13,7 @@ use datafusion::error::DataFusionError;
 use datafusion::datasource::file_format::options::{CsvReadOptions, ParquetReadOptions};
 use datafusion::logical_expr::col;
 use datafusion::logical_expr::SortExpr;
+use datafusion::common::arrow::datatypes::DataType;
 
 fn apply_select_sort_on_non_distinct_query(mut df: DataFrame, select: impl ExactSizeIterator<Item = String>, sort: impl ExactSizeIterator<Item = SortBy>) -> Result<DataFrame, DataFusionError> {
     if select.len() > 0 {
@@ -32,6 +34,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         {
             let options = ctx.options_mut();
             options.execution.keep_partition_by_columns = self.keep_partition;
+            options.execution.listing_table_factory_infer_partitions = true;
             if !self.coerce_int96.is_default() {
                 options.execution.parquet.coerce_int96 = Some(self.coerce_int96.as_unit_name().to_owned());
             }
@@ -40,9 +43,16 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         let env = create_runtime(path)?;
         let ctx = SessionContext::new_with_config_rt(ctx, env);
 
+        let mut table_partition_cols = Vec::new();
+        for component in Path::new(path).iter().flat_map(|component| component.to_str()) {
+            if let Some((key, _value)) = component.split_once('=') {
+                table_partition_cols.push((key.to_owned(), DataType::Utf8View));
+            }
+        }
+
         let mut df = match format {
-            FileFormat::Csv => ctx.read_csv(path, CsvReadOptions::new().has_header(true)).await,
-            FileFormat::Parquet => ctx.read_parquet(path, ParquetReadOptions::new()).await,
+            FileFormat::Csv => ctx.read_csv(path, CsvReadOptions::new().has_header(true).table_partition_cols(table_partition_cols)).await,
+            FileFormat::Parquet => ctx.read_parquet(path, ParquetReadOptions::new().table_partition_cols(table_partition_cols)).await,
         }?;
 
         df = if let Some(unique) = self.unique {
