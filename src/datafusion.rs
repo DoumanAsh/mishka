@@ -38,45 +38,41 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         let mut table_path = String::new();
         let os_path = Path::new(path).to_owned();
         let is_file = os_path.extension().is_some();
-        if path.ends_with('/') || os_path.extension().is_some() {
-            for component in os_path.iter().flat_map(|component| component.to_str()) {
-                if let Some((key, value)) = component.split_once('=') {
-                    table_partition_cols.push((key.to_owned(), DataType::Utf8View));
-                    //Preserve order to make sure we pass partitions in the same order as user specified
-                    if let Some(idx) = user_partitions.iter().position(|val| *val == key) {
-                        user_partitions.remove(idx);
-                    }
-                    if let Some(filter) = partition_filter.take() {
-                        partition_filter = Some(filter.and(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None))));
-                    } else {
-                        partition_filter = Some(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None)));
-                    }
-                } else if table_partition_cols.is_empty() {
-                    table_path.push_str(component);
+        for component in os_path.iter().flat_map(|component| component.to_str()) {
+            if let Some((key, value)) = component.split_once('=') {
+                table_partition_cols.push((key.to_owned(), DataType::Utf8View));
+                //Preserve order to make sure we pass partitions in the same order as user specified
+                if let Some(idx) = user_partitions.iter().position(|val| *val == key) {
+                    user_partitions.remove(idx);
+                }
+                if let Some(filter) = partition_filter.take() {
+                    partition_filter = Some(filter.and(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None))));
+                } else {
+                    partition_filter = Some(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None)));
+                }
+            } else if table_partition_cols.is_empty() {
+                table_path.push_str(component);
+                table_path.push('/');
+                if component.ends_with(':') {
                     table_path.push('/');
-                    if component.ends_with(':') {
-                        table_path.push('/');
-                    }
                 }
             }
-
-            if is_file {
-                table_path.pop();
-            }
-
-            if !table_partition_cols.is_empty() {
-                println!(">Infer path partitions={:?}", table_partition_cols);
-                println!(">Table path={table_path}");
-            }
-            //Assume user passes partitions in the same order as they should be in target
-            //But we always exclude partitions contained in path
-            for user_partition in user_partitions {
-                table_partition_cols.push((user_partition.to_owned(), DataType::Utf8View));
-            }
-
-        } else {
-            table_path.push_str(path);
         }
+
+        if is_file {
+            table_path.pop();
+        }
+
+        if !table_partition_cols.is_empty() {
+            println!(">Infer path partitions={:?}", table_partition_cols);
+            println!(">Table path={table_path}");
+        }
+        //Assume user passes partitions in the same order as they should be in target
+        //But we always exclude partitions contained in path
+        for user_partition in user_partitions {
+            table_partition_cols.push((user_partition.to_owned(), DataType::Utf8View));
+        }
+
 
         {
             let options = ctx.options_mut();
