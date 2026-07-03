@@ -104,3 +104,8 @@ There are some differences to consider:
     - Although it has some shared state behind lock, it is probably more useful for property of being global config
     - I guess you can rely on shared state to optimize multiple queries? Not sure how useful it would be in practice
 - AWS & GCP features of object_store require manual enabling which is not convenient comparing to `polars`
+
+#### Partitions inference
+
+By default `datafusion` can recursively dwell into folder, but it will be unable to determine partitions automatically.
+To enable correct partitioning you need to specify `table_partition_cols` for `read_*` method, otherwise datafusion will be unable to handle HIVE style parquet files as partition columns are not included and should be inferred from file path
