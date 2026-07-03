@@ -81,6 +81,9 @@ pub struct Concat {
     #[arg(long, default_value)]
     ///Specifies to keep partitioned columns in output. By default partitioned columns are excluded
     pub keep_partitions: bool,
+    #[arg(long, default_value)]
+    ///Specifies to read partitions in path specified by partition_by. By default assumes columns are in destination file.
+    pub read_path_partitions: bool,
     #[arg(long, default_value = "ExpectFormat::Infer")]
     ///Expected file format. Defaults to inferring from path
     pub format: ExpectFormat,

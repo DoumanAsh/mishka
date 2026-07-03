@@ -37,7 +37,8 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         let mut table_partition_cols = Vec::new();
         let mut table_path = String::new();
         let os_path = Path::new(path).to_owned();
-        if path.ends_with('/') || os_path.extension().is_none() {
+        let is_file = os_path.extension().is_some();
+        if path.ends_with('/') || os_path.extension().is_some() {
             for component in os_path.iter().flat_map(|component| component.to_str()) {
                 if let Some((key, value)) = component.split_once('=') {
                     table_partition_cols.push((key.to_owned(), DataType::Utf8View));
@@ -57,6 +58,10 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
                         table_path.push('/');
                     }
                 }
+            }
+
+            if is_file {
+                table_path.pop();
             }
 
             if !table_partition_cols.is_empty() {

@@ -64,6 +64,7 @@ OPTIONS:
     -h,  --help                            Prints this help information
          --partition_by <partition_by>...  List of column names to partition by (in order)
          --keep_partitions                 Specifies to keep partitioned columns in output. By default partitioned columns are excluded
+         --read_path_partitions            Specifies to read partitions in path specified by partition_by. By default assumes columns are in destination file.
          --format <format>                 Expected file format. Defaults to inferring from path
          --prefix <prefix>                 Optional common prefix for output files. Applied to partitioned output only.
 
@@ -109,3 +110,5 @@ There are some differences to consider:
 
 By default `datafusion` can recursively dwell into folder, but it will be unable to determine partitions automatically.
 To enable correct partitioning you need to specify `table_partition_cols` for `read_*` method, otherwise datafusion will be unable to handle HIVE style parquet files as partition columns are not included and should be inferred from file path
+
+**NOTE:** You must make sure to use `table_partition_cols` only if file doesn't contain this column, otherwise it will cause duplicate column error

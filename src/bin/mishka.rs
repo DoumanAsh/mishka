@@ -229,7 +229,13 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
     };
 
     rt.block_on(async move {
-        let df = match args.into_query().with_keep_partition(query.keep_partitions).create_lazy_datafusion(cfg, &query.path, format, &query.partition_by).await {
+        let df_partition_by = if query.read_path_partitions {
+            query.partition_by.as_slice()
+        } else {
+            &[]
+        };
+
+        let df = match args.into_query().with_keep_partition(query.keep_partitions).create_lazy_datafusion(cfg, &query.path, format, df_partition_by).await {
             Ok(result) => result,
             Err(error) => error!("{}: {error}", query.path)
         };
