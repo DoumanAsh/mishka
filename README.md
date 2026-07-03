@@ -91,6 +91,10 @@ There are some differences to consider:
 - Heavier dependency wise so slower compile times but code size is as fat as datafusion, so not a big deal
 - Hard-coded to write footer into parquet, resulting in output with overhead
 
+#### Partitions inference
+
+By default `polars` will infer partitions for single directory inputs, otherwise user need to specify `hive_options` in `ScanArgsParquet`
+
 ### Datafusion
 
 - A very 'boring' and complex API to navigate

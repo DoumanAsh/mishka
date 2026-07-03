@@ -9,10 +9,10 @@ pub use polars::prelude::{ScanArgsParquet, SortMultipleOptions, UniqueKeepStrate
 
 impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
     ///Scans `path` expecting specified `format`
-    pub fn create_lazy_polars(self, path: &str, format: FileFormat) -> Result<LazyFrame, polars::error::PolarsError> {
+    pub fn create_lazy_polars(self, path: &str, format: FileFormat, partition_by: &[String]) -> Result<LazyFrame, polars::error::PolarsError> {
         let mut df = match format {
             FileFormat::Csv => scan_csv(path)?,
-            FileFormat::Parquet => scan_parquet(path)?,
+            FileFormat::Parquet => scan_parquet(path, partition_by)?,
         };
 
         let mut select = Vec::new();
@@ -61,12 +61,27 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
 }
 
 ///Scan parquet through `path`
-pub fn scan_parquet(path: &str) -> Result<LazyFrame, polars::error::PolarsError> {
+pub fn scan_parquet(path: &str, partition_by: &[String]) -> Result<LazyFrame, polars::error::PolarsError> {
     let uri = PlRefPath::new(path);
+
+    let hive_options = if partition_by.is_empty() {
+        polars::prelude::HiveOptions {
+            enabled: None,
+            ..Default::default()
+        }
+    } else {
+        //TODO: consider if manual scheme specification would be needed
+        polars::prelude::HiveOptions {
+            enabled: Some(true),
+            ..Default::default()
+        }
+    };
+
     let args = ScanArgsParquet {
         use_statistics: true,
         cache: true,
         glob: true,
+        hive_options,
         allow_missing_columns: false,
         ..Default::default()
     };

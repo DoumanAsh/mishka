@@ -45,7 +45,7 @@ fn polars_query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
         None => error!("Unable to infer file format. Please specify --format"),
     };
 
-    let df = match args.into_query().create_lazy_polars(&query.path, format) {
+    let df = match args.into_query().create_lazy_polars(&query.path, format, &[]) {
         Ok(df) => df.with_streaming(true),
         Err(error) => error!("{}: {error}", query.path.as_str()),
     };
@@ -113,7 +113,12 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
         None => error!("Unable to infer output format. Please specify --format"),
     };
 
-    let df = match args.into_query().with_keep_partition(query.keep_partitions).create_lazy_polars(&query.path, format) {
+    let df_partition_by = if query.read_path_partitions {
+        query.partition_by.as_slice()
+    } else {
+        &[]
+    };
+    let df = match args.into_query().with_keep_partition(query.keep_partitions).create_lazy_polars(&query.path, format, df_partition_by) {
         Ok(df) => df.with_streaming(true),
         Err(error) => error!("{}: {error}", query.path.as_str()),
     };
