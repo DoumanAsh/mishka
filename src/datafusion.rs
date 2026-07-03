@@ -30,29 +30,65 @@ fn apply_select_sort_on_non_distinct_query(mut df: DataFrame, select: impl Exact
 
 impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
     ///Scans `path` expecting specified `format`
-    pub async fn create_lazy_datafusion(self, mut ctx: SessionConfig, path: &str, format: FileFormat) -> Result<DataFrame, DataFusionError> {
+    pub async fn create_lazy_datafusion(self, mut ctx: SessionConfig, path: &str, format: FileFormat, partition_by: &[String]) -> Result<DataFrame, DataFusionError> {
+        let mut user_partitions = partition_by.iter().map(String::as_str).collect::<Vec<_>>();
+
+        let mut partition_filter: Option<datafusion::prelude::Expr> = None;
+        let mut table_partition_cols = Vec::new();
+        let mut table_path = String::new();
+        let os_path = Path::new(path).to_owned();
+        if path.ends_with('/') || os_path.extension().is_some() {
+            for component in os_path.iter().flat_map(|component| component.to_str()) {
+                if let Some((key, value)) = component.split_once('=') {
+                    table_partition_cols.push((key.to_owned(), DataType::Utf8View));
+                    //Preserve order to make sure we pass partitions in the same order as user specified
+                    if let Some(idx) = user_partitions.iter().position(|val| *val == key) {
+                        user_partitions.remove(idx);
+                    }
+                    if let Some(filter) = partition_filter.take() {
+                        partition_filter = Some(filter.and(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None))));
+                    } else {
+                        partition_filter = Some(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None)));
+                    }
+                } else if table_partition_cols.is_empty() {
+                    table_path.push_str(component);
+                    table_path.push('/');
+                    if component.ends_with(':') {
+                        table_path.push('/');
+                    }
+                }
+            }
+
+            if !table_partition_cols.is_empty() {
+                println!(">Infer path partitions={:?}", table_partition_cols);
+                println!(">Table path={table_path}");
+            }
+            //Assume user passes partitions in the same order as they should be in target
+            //But we always exclude partitions contained in path
+            for user_partition in user_partitions {
+                table_partition_cols.push((user_partition.to_owned(), DataType::Utf8View));
+            }
+
+        } else {
+            table_path.push_str(path);
+        }
+
         {
             let options = ctx.options_mut();
             options.execution.keep_partition_by_columns = self.keep_partition;
+            options.execution.listing_table_ignore_subdirectory = false;
             options.execution.listing_table_factory_infer_partitions = true;
             if !self.coerce_int96.is_default() {
                 options.execution.parquet.coerce_int96 = Some(self.coerce_int96.as_unit_name().to_owned());
             }
         }
 
-        let env = create_runtime(path)?;
+        let env = create_runtime(&table_path)?;
         let ctx = SessionContext::new_with_config_rt(ctx, env);
 
-        let mut table_partition_cols = Vec::new();
-        for component in Path::new(path).iter().flat_map(|component| component.to_str()) {
-            if let Some((key, _value)) = component.split_once('=') {
-                table_partition_cols.push((key.to_owned(), DataType::Utf8View));
-            }
-        }
-
         let mut df = match format {
-            FileFormat::Csv => ctx.read_csv(path, CsvReadOptions::new().has_header(true).table_partition_cols(table_partition_cols)).await,
-            FileFormat::Parquet => ctx.read_parquet(path, ParquetReadOptions::new().table_partition_cols(table_partition_cols)).await,
+            FileFormat::Csv => ctx.read_csv(table_path, CsvReadOptions::new().has_header(true).table_partition_cols(table_partition_cols)).await,
+            FileFormat::Parquet => ctx.read_parquet(table_path, ParquetReadOptions::new().table_partition_cols(table_partition_cols)).await,
         }?;
 
         df = if let Some(unique) = self.unique {
@@ -77,7 +113,11 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             apply_select_sort_on_non_distinct_query(df, self.column, self.sort_by)?
         };
 
-        Ok(df)
+        if let Some(filter) = partition_filter {
+            Ok(df.filter(filter)?)
+        } else {
+            Ok(df)
+        }
     }
 }
 

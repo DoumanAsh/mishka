@@ -81,7 +81,7 @@ fn datafusion_query(args: cli::CommonArgs, query: cli::Query) -> ExitCode {
         cfg.options_mut().execution.batch_size = chunk_by;
     }
     rt.block_on(async move {
-        let df = match args.into_query().create_lazy_datafusion(cfg, &query.path, format).await {
+        let df = match args.into_query().create_lazy_datafusion(cfg, &query.path, format, &[]).await {
             Ok(df) => df,
             Err(error) => error!("{}: {error}", query.path)
         };
@@ -201,12 +201,6 @@ fn polars_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
 fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
     use core::fmt::Write;
 
-    let df_opts = if query.partition_by.is_empty() {
-        mishka::datafusion::DataFrameWriteOptions::new().with_single_file_output(true)
-    } else {
-        mishka::datafusion::DataFrameWriteOptions::new().with_partition_by(query.partition_by)
-    };
-
     let rt = match tokio::runtime::Builder::new_current_thread().enable_time().enable_io().build() {
         Ok(rt) => rt,
         Err(error) => error!("Cannot initialize event loop: {error}"),
@@ -235,9 +229,15 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
     };
 
     rt.block_on(async move {
-        let df = match args.into_query().with_keep_partition(query.keep_partitions).create_lazy_datafusion(cfg, &query.path, format).await {
+        let df = match args.into_query().with_keep_partition(query.keep_partitions).create_lazy_datafusion(cfg, &query.path, format, &query.partition_by).await {
             Ok(result) => result,
             Err(error) => error!("{}: {error}", query.path)
+        };
+
+        let df_opts = if query.partition_by.is_empty() {
+            mishka::datafusion::DataFrameWriteOptions::new().with_single_file_output(true)
+        } else {
+            mishka::datafusion::DataFrameWriteOptions::new().with_partition_by(query.partition_by)
         };
 
         match sink_format {
