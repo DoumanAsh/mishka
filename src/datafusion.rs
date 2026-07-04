@@ -84,7 +84,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             }
         }
 
-        let env = create_runtime(&table_path)?;
+        let env = create_runtime(&table_path).await?;
         let ctx = SessionContext::new_with_config_rt(ctx, env);
 
         let mut df = match format {
@@ -143,7 +143,7 @@ impl core::fmt::Display for BucketNameMissing {
 impl std::error::Error for BucketNameMissing {}
 
 //Creates datafusion runtime based on hints from `path`
-fn create_runtime(_path: &str) -> Result<Arc<RuntimeEnv>, DataFusionError> {
+async fn create_runtime(_path: &str) -> Result<Arc<RuntimeEnv>, DataFusionError> {
     //TODO: add memory limit using 50% of system memory
     let env = RuntimeEnvBuilder::new();
 
@@ -159,9 +159,27 @@ fn create_runtime(_path: &str) -> Result<Arc<RuntimeEnv>, DataFusionError> {
         url.set_path("");
         url.set_query(None);
 
-        println!(">Registering AWS storage with url={url}");
-        let s3 = object_store::aws::AmazonS3Builder::from_env().with_bucket_name(bucket_name).build().map_err(|error| DataFusionError::External(Box::new(error)))?;
-        env.object_store_registry.register_store(&url, Arc::new(s3));
+        match object_store_aws::init(Some(&object_store_aws::http::Builder::new().with_ring())).await {
+            Ok(credentials) => {
+                println!(">Registering AWS storage with url={url}");
+
+                let mut s3 = object_store_aws::AmazonS3Builder::from_env().with_region(credentials.region_str()).with_bucket_name(bucket_name);
+                match credentials.http_client() {
+                    Ok(Some(http_client)) => {
+                        s3 = s3.with_http_connector(http_client);
+                    },
+                    Ok(None) => {
+                        println!("> AWS SDK HTTP client is not availalble");
+                    },
+                    Err(error) => {
+                        eprintln!("# AWS SDK HTTP client is not availalble: {error}");
+                    }
+                }
+                let s3 = s3.with_credentials(Arc::new(credentials)).build().map_err(|error| DataFusionError::External(Box::new(error)))?;
+                env.object_store_registry.register_store(&url, Arc::new(s3));
+            },
+            Err(error) => return Err(DataFusionError::External(Box::new(error))),
+        }
     }
 
     #[cfg(feature = "gcp")]

@@ -47,6 +47,11 @@ version = "0.13"
 default-features = false
 optional = true
 
+[dependencies.object_store_aws]
+version = "0.13"
+features = ["sso", "ring"]
+optional = true
+
 [dependencies.datafusion]
 version = "54"
 default-features = false
@@ -78,7 +83,7 @@ cli = ["arg", "tokio?/net", "tokio?/time"]
 aws = ["polars?/aws", "object_store?/aws"]
 gcp = ["polars?/gcp", "object_store?/gcp"]
 polars = ["dep:polars"]
-datafusion = ["dep:datafusion", "tokio", "futures-util", "object_store", "url"]
+datafusion = ["dep:datafusion", "tokio", "futures-util", "object_store", "url", "object_store_aws"]
 
 [profile.release]
 lto = 'thin'
