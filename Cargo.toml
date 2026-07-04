@@ -1,6 +1,6 @@
 [package]
 name = "mishka"
-version = "1.0.0-beta.7"
+version = "1.0.0-beta.8"
 edition = "2024"
 description = "Utility to scan data files"
 license = "BSL-1.0"
@@ -74,6 +74,12 @@ version = "0.3"
 default-features = false
 optional = true
 
+[dependencies.tracing-subscriber]
+version = "0.3"
+default-features = false
+features = ["fmt", "std", "env-filter", "tracing-log"]
+optional = true
+
 [features]
 #default = ["cli", "datafusion", "aws"]
 # TODO: you might need to add aws/gcp to object_store in case of datafusion
@@ -84,6 +90,7 @@ aws = ["polars?/aws", "object_store?/aws"]
 gcp = ["polars?/gcp", "object_store?/gcp"]
 polars = ["dep:polars"]
 datafusion = ["dep:datafusion", "tokio", "futures-util", "object_store", "url", "object_store_aws"]
+tracing = ["tracing-subscriber"]
 
 [profile.release]
 lto = 'thin'

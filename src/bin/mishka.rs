@@ -286,6 +286,11 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
 }
 
 fn main() -> ExitCode {
+    #[cfg(feature = "tracing")]
+    {
+        tracing_subscriber::fmt().compact().init();
+    }
+
     let (args, command) = cli::args().split_parts();
     match command {
         cli::Command::Query(params) => query(args, params),

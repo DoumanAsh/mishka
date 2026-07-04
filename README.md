@@ -13,7 +13,7 @@ Mostly written to evaluate both Rust libraries.
 Common
 
 ```
-mishka 1.0.0-beta.7
+mishka 1.0.0-beta.8
 Utility to work with data files
 
 USAGE: [OPTIONS] <command>
