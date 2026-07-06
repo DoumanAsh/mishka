@@ -3,10 +3,30 @@ use super::{Schema, DataFrame};
 
 use core::fmt;
 
+use datafusion::prelude::Expr;
 use datafusion::common::arrow::array::RecordBatch;
 use datafusion::common::arrow::datatypes::Schema as DatafusionSchema;
 use datafusion::error::DataFusionError;
 use futures_util::StreamExt;
+
+///Format for list of filters
+pub struct FiltersFmt<'a>(pub &'a [Expr]);
+
+impl fmt::Display for FiltersFmt<'_> {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut filters = self.0.iter();
+        match filters.next() {
+            Some(filter) => {
+                fmt.write_fmt(format_args!("{filter}"))?;
+                for filter in filters {
+                    fmt.write_fmt(format_args!(", {filter}"))?
+                }
+                Ok(())
+            },
+            None => Ok(())
+        }
+    }
+}
 
 impl fmt::Display for Schema<'_, DatafusionSchema> {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {

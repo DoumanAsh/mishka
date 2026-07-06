@@ -7,13 +7,14 @@ use super::{FileFormat, Query, SortBy};
 
 pub use datafusion::dataframe::DataFrameWriteOptions;
 pub use datafusion::execution::context::{SessionContext, SessionConfig};
+use datafusion::catalog::default_table_source::DefaultTableSource;
 use datafusion::execution::runtime_env::{RuntimeEnv, RuntimeEnvBuilder};
 use datafusion::dataframe::DataFrame;
 use datafusion::error::DataFusionError;
-use datafusion::datasource::file_format::options::{CsvReadOptions, ParquetReadOptions};
 use datafusion::logical_expr::col;
 use datafusion::logical_expr::SortExpr;
 use datafusion::common::arrow::datatypes::DataType;
+use futures_util::StreamExt;
 
 fn apply_select_sort_on_non_distinct_query(mut df: DataFrame, select: impl ExactSizeIterator<Item = String>, sort: impl ExactSizeIterator<Item = SortBy>) -> Result<DataFrame, DataFusionError> {
     if select.len() > 0 {
@@ -31,9 +32,11 @@ fn apply_select_sort_on_non_distinct_query(mut df: DataFrame, select: impl Exact
 impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
     ///Scans `path` expecting specified `format`
     pub async fn create_lazy_datafusion(self, mut ctx: SessionConfig, path: &str, format: FileFormat, partition_by: &[String]) -> Result<DataFrame, DataFusionError> {
+        use datafusion::datasource::file_format;
+
         let mut user_partitions = partition_by.iter().map(String::as_str).collect::<Vec<_>>();
 
-        let mut partition_filter: Option<datafusion::prelude::Expr> = None;
+        let mut partition_filters = Vec::new();
         let mut table_partition_cols = Vec::new();
         let mut table_path = String::new();
         let os_path = Path::new(path).to_owned();
@@ -45,11 +48,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
                 if let Some(idx) = user_partitions.iter().position(|val| *val == key) {
                     user_partitions.remove(idx);
                 }
-                if let Some(filter) = partition_filter.take() {
-                    partition_filter = Some(filter.and(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None))));
-                } else {
-                    partition_filter = Some(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None)));
-                }
+                partition_filters.push(col(key).eq(datafusion::prelude::Expr::Literal(value.into(), None)));
             } else if table_partition_cols.is_empty() {
                 table_path.push_str(component);
                 table_path.push('/');
@@ -67,12 +66,12 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             println!(">Infer path partitions={:?}", table_partition_cols);
             println!(">Table path={table_path}");
         }
+
         //Assume user passes partitions in the same order as they should be in target
         //But we always exclude partitions contained in path
         for user_partition in user_partitions {
             table_partition_cols.push((user_partition.to_owned(), DataType::Utf8View));
         }
-
 
         {
             let options = ctx.options_mut();
@@ -87,16 +86,32 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         let env = create_runtime(&table_path).await?;
         let ctx = SessionContext::new_with_config_rt(ctx, env);
 
-        let mut df = match format {
-            FileFormat::Csv => ctx.read_csv(table_path, CsvReadOptions::new().has_header(true).table_partition_cols(table_partition_cols)).await,
-            FileFormat::Parquet => ctx.read_parquet(table_path, ParquetReadOptions::new().table_partition_cols(table_partition_cols)).await,
-        }?;
+        let original_path = datafusion::datasource::listing::ListingTableUrl::parse(path)?;
+        let listing_path = datafusion::datasource::listing::ListingTableUrl::parse(&table_path)?;
+        let listing_options = datafusion::datasource::listing::ListingOptions::new(match format {
+            FileFormat::Csv => Arc::new(file_format::csv::CsvFormat::default().with_has_header(true)),
+            FileFormat::Parquet => Arc::new(file_format::parquet::ParquetFormat::new()),
+        }).with_table_partition_cols(table_partition_cols.clone());
 
+        println!(">{original_path}: Fetching available file");
+        let ctx_object_store = ctx.runtime_env().object_store(&original_path)?;
+        let first_file = match original_path.list_all_files(&ctx.state(), &*ctx_object_store, &listing_options.file_extension).await?.next().await {
+            Some(first_file) => first_file?,
+            None => return Err(DataFusionError::Internal(format!("{path}: No files available to infer schema"))),
+        };
+        println!(">{}: Inferring schema", first_file.location);
+        let schema = listing_options.format.infer_schema(&ctx.state(), &ctx_object_store, &[first_file]).await?;
+        let config = datafusion::datasource::listing::ListingTableConfig::new(listing_path).with_listing_options(listing_options).with_schema(schema);
+        let listing = datafusion::datasource::listing::ListingTable::try_new(config)?;
 
-        if let Some(filter) = partition_filter {
-            println!(">Enable partition filters: {}", filter);
-            df = df.filter(filter)?
+        let table_name = table_path.trim_end_matches('/').rsplit('/').next().unwrap();
+        if partition_filters.is_empty() {
+            println!(">Read table '{table_name}'");
+        } else {
+            println!(">Read table '{table_name}' with filters {filter}", filter=crate::format::datafusion::FiltersFmt(&partition_filters));
         }
+        let df_plan = datafusion::logical_expr::LogicalPlanBuilder::scan_with_filters(table_name, Arc::new(DefaultTableSource::new(Arc::new(listing))), None, partition_filters)?.build()?;
+        let mut df = datafusion::dataframe::DataFrame::new(ctx.state(), df_plan);
         df = if let Some(unique) = self.unique {
             if unique.columns.len() == 0 {
                 let distinct_on = unique.columns.map(|column| col(column)).collect();
