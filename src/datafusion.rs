@@ -9,6 +9,7 @@ pub use datafusion::dataframe::DataFrameWriteOptions;
 pub use datafusion::execution::context::{SessionContext, SessionConfig};
 use datafusion::catalog::default_table_source::DefaultTableSource;
 use datafusion::execution::runtime_env::{RuntimeEnv, RuntimeEnvBuilder};
+use datafusion::execution::cache::cache_manager::CacheManagerConfig;
 use datafusion::dataframe::DataFrame;
 use datafusion::error::DataFusionError;
 use datafusion::logical_expr::col;
@@ -160,8 +161,13 @@ impl std::error::Error for BucketNameMissing {}
 
 //Creates datafusion runtime based on hints from `path`
 async fn create_runtime(_path: &str) -> Result<Arc<RuntimeEnv>, DataFusionError> {
+    //TODO: Current cache manager forces full table listing on cache miss, so disable file list
+    //caching until it is fixed
+    //
+    //https://github.com/apache/datafusion/issues/23341
+    let cache_config = CacheManagerConfig::default().with_list_files_cache(None).with_list_files_cache_limit(0);
     //TODO: add memory limit using 50% of system memory
-    let env = RuntimeEnvBuilder::new();
+    let env = RuntimeEnvBuilder::new().with_cache_manager(cache_config);
 
     #[cfg(feature = "aws")]
     if _path.starts_with("s3://") {
