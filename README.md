@@ -121,3 +121,12 @@ To enable correct partitioning you need to specify `table_partition_cols` for `r
 
 By default datafusion normal API will not be able to optimize loads using known partition filters.
 The only option is to manually query all files to read via [ListingTable::list_files_for_scan](https://docs.rs/datafusion-catalog-listing/54.0.0/datafusion_catalog_listing/struct.ListingTable.html#method.list_files_for_scan)
+
+#### Caching behavior
+
+When listing files with partition pruning datafusion has nasty bug where it performs full table scan on cache miss:
+https://github.com/apache/datafusion/issues/23341
+
+This results in significant increase of workload even if you only need to fetch specific sub-directory.
+Therefore it is recommended to disable cache for file listing:
+https://github.com/DoumanAsh/mishka/blob/87454fb37312dd0143823accd9cc9bd5be39230f/src/datafusion.rs#L168
