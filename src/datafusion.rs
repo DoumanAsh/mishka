@@ -92,6 +92,11 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             FileFormat::Parquet => ctx.read_parquet(table_path, ParquetReadOptions::new().table_partition_cols(table_partition_cols)).await,
         }?;
 
+
+        if let Some(filter) = partition_filter {
+            println!(">Enable partition filters: {}", filter);
+            df = df.filter(filter)?
+        }
         df = if let Some(unique) = self.unique {
             if unique.columns.len() == 0 {
                 let distinct_on = unique.columns.map(|column| col(column)).collect();
@@ -114,11 +119,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             apply_select_sort_on_non_distinct_query(df, self.column, self.sort_by)?
         };
 
-        if let Some(filter) = partition_filter {
-            Ok(df.filter(filter)?)
-        } else {
-            Ok(df)
-        }
+        Ok(df)
     }
 }
 

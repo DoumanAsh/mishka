@@ -48,7 +48,7 @@ default-features = false
 optional = true
 
 [dependencies.object_store_aws]
-version = "0.13"
+version = "0.13.6"
 features = ["sso", "ring"]
 optional = true
 
@@ -77,7 +77,7 @@ optional = true
 [dependencies.tracing-subscriber]
 version = "0.3"
 default-features = false
-features = ["fmt", "std", "env-filter", "tracing-log"]
+features = ["ansi", "fmt", "std", "env-filter", "tracing-log"]
 optional = true
 
 [features]
@@ -90,7 +90,7 @@ aws = ["polars?/aws", "object_store?/aws"]
 gcp = ["polars?/gcp", "object_store?/gcp"]
 polars = ["dep:polars"]
 datafusion = ["dep:datafusion", "tokio", "futures-util", "object_store", "url", "object_store_aws"]
-tracing = ["tracing-subscriber"]
+tracing = ["tracing-subscriber", "object_store_aws?/tracing"]
 
 [profile.release]
 lto = 'thin'

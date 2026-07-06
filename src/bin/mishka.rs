@@ -288,7 +288,10 @@ fn datafusion_concat(args: cli::CommonArgs, query: cli::Concat) -> ExitCode {
 fn main() -> ExitCode {
     #[cfg(feature = "tracing")]
     {
-        tracing_subscriber::fmt().compact().init();
+        tracing_subscriber::fmt().pretty()
+                                 .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
+                                 .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
+                                 .init();
     }
 
     let (args, command) = cli::args().split_parts();
