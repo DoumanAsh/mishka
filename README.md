@@ -116,3 +116,8 @@ By default `datafusion` can recursively dwell into folder, but it will be unable
 To enable correct partitioning you need to specify `table_partition_cols` for `read_*` method, otherwise datafusion will be unable to handle HIVE style parquet files as partition columns are not included and should be inferred from file path
 
 **NOTE:** You must make sure to use `table_partition_cols` only if file doesn't contain this column, otherwise it will cause duplicate column error
+
+#### Partitions filtering
+
+By default datafusion normal API will not be able to optimize loads using known partition filters.
+The only option is to manually query all files to read via [ListingTable::list_files_for_scan](https://docs.rs/datafusion-catalog-listing/54.0.0/datafusion_catalog_listing/struct.ListingTable.html#method.list_files_for_scan)
