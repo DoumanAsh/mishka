@@ -3,6 +3,119 @@ use arg::Args;
 
 use crate::{ExpectFormat, Int96Timestamp};
 
+#[derive(Debug)]
+///Operand types
+pub enum Operand {
+    ///Literal is always should be treated as constant
+    Literal(String),
+    ///Identifier assumes existing column name
+    Identifier(String),
+}
+
+impl Operand {
+    ///Parses from string identifying any quoted value as literal
+    pub fn parse(text: &str) -> Self {
+        let ident = text.trim_matches('"').trim_matches('\'');
+
+        if ident.len() == text.len() {
+            if ident.chars().all(|ch| ch.is_numeric()) {
+            Self::Literal(text.to_owned())
+            } else {
+                Self::Identifier(text.to_owned())
+            }
+        } else {
+            Self::Literal(ident.to_owned())
+        }
+    }
+}
+
+#[derive(Debug)]
+///Possible operators
+pub enum Operator {
+    ///<
+    Less,
+    ///<=
+    LessEq,
+    ///==
+    Eq,
+    /// !=
+    NotEq,
+    ///>=
+    GreaterEq,
+    ///>
+    Greater,
+}
+
+impl Operator {
+    ///Parses operator
+    pub fn parse(text: &str) -> Option<Self> {
+        match text {
+            "=" | "==" => Some(Self::Eq),
+            "!=" => Some(Self::NotEq),
+            ">" => Some(Self::Greater),
+            ">=" => Some(Self::GreaterEq),
+            "<" => Some(Self::Less),
+            "<=" => Some(Self::LessEq),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+///Simple SQL like expression
+pub struct Expression {
+    ///Left side
+    pub left: Operand,
+    ///Operator
+    pub operator: Operator,
+    ///Right side
+    pub right: Operand,
+}
+
+impl core::str::FromStr for Expression {
+    type Err = ();
+    fn from_str(text: &str) -> Result<Self, Self::Err> {
+        let mut left = None;
+        let mut operator = None;
+        let mut right = None;
+
+        for part in text.split_whitespace() {
+            if left.is_none() {
+                left = Some(Operand::parse(part));
+            } else if operator.is_none() {
+                match Operator::parse(part) {
+                    Some(new_operator) => {
+                        operator = Some(new_operator);
+                    },
+                    None => return Err(())
+                }
+            } else if right.is_none() {
+                right = Some(Operand::parse(part));
+            } else {
+                return Err(())
+            }
+        }
+        let left = match left {
+            Some(left) => left,
+            None => return Err(()),
+        };
+        let operator = match operator {
+            Some(operator) => operator,
+            None => return Err(()),
+        };
+        let right = match right {
+            Some(right) => right,
+            None => return Err(()),
+        };
+
+        Ok(Self {
+            left,
+            operator,
+            right,
+        })
+    }
+}
+
 #[derive(Copy, Clone, Debug)]
 ///Backend to use
 pub enum Backend {
@@ -123,6 +236,8 @@ pub struct CommonArgs {
     pub unique_by: Vec<String>,
     ///Specify to count duplicate records under column `dup_count`
     pub count_duplicates: bool,
+    ///Specify filtering expressions to use when selecting data.
+    pub filter: Vec<Expression>,
     ///Specify to use stable operations
     pub stable: bool,
     ///Expected file format. Defaults to inferring from path
@@ -141,6 +256,7 @@ impl CommonArgs {
         impl ExactSizeIterator<Item = String>,
         impl ExactSizeIterator<Item = crate::SortBy>,
         impl ExactSizeIterator<Item = String>,
+        impl ExactSizeIterator<Item = Expression>,
     > {
         crate::Query {
             column: self.select.into_iter(),
@@ -155,6 +271,7 @@ impl CommonArgs {
             coerce_int96: self.coerce_int96,
             keep_partition: self.keep_partition,
             count_duplicates: self.count_duplicates,
+            filter: self.filter.into_iter(),
         }
     }
 }
@@ -185,6 +302,9 @@ pub struct Cli {
     ///Specify to count duplicate records under column `dup_count`
     pub count_duplicates: bool,
     #[arg(long)]
+    ///Specify filtering expressions to use when selecting data.
+    pub filter: Vec<Expression>,
+    #[arg(long)]
     ///Specify to use stable operations
     pub stable: bool,
     #[arg(long, default_value = "ExpectFormat::Infer")]
@@ -209,6 +329,7 @@ impl Cli {
             mut unique,
             unique_by,
             count_duplicates,
+            filter,
             stable,
             format,
             coerce_int96,
@@ -224,6 +345,7 @@ impl Cli {
             unique,
             unique_by,
             count_duplicates,
+            filter,
             stable,
             format,
             coerce_int96,

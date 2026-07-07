@@ -144,13 +144,15 @@ pub struct SortBy {
 }
 
 ///Filters to query data
-pub struct Query<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String> = CI> {
+pub struct Query<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>, WHERE: ExactSizeIterator<Item = cli::Expression>> {
     ///Iterator of columns to select
     pub column: CI,
     ///Iterator over [SortBy]
     pub sort_by: SBI,
     ///If specified request deduplication data frames
     pub unique: Option<Unique<UCI>>,
+    ///Filtering expressions to use when selecting data.
+    pub filter: WHERE,
     ///Specifies coercing method for int96.
     ///
     ///Prefer default value unless you know what you're doing
@@ -161,7 +163,7 @@ pub struct Query<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<It
     pub count_duplicates: bool,
 }
 
-impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
+impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>, WHERE: ExactSizeIterator<Item = cli::Expression>> Query<CI, SBI, UCI, WHERE> {
     #[inline]
     ///Modifies whether to keep partitions or not
     ///

@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use super::{FileFormat, Query, SortBy, DUPLICATE_COLUMN};
+use super::{cli, FileFormat, Query, SortBy, DUPLICATE_COLUMN};
 
 pub use datafusion::dataframe::DataFrameWriteOptions;
 pub use datafusion::execution::context::{SessionContext, SessionConfig};
@@ -12,7 +12,7 @@ use datafusion::execution::runtime_env::{RuntimeEnv, RuntimeEnvBuilder};
 use datafusion::execution::cache::cache_manager::CacheManagerConfig;
 use datafusion::dataframe::DataFrame;
 use datafusion::error::DataFusionError;
-use datafusion::logical_expr::col;
+use datafusion::logical_expr::{col, lit};
 use datafusion::logical_expr::{Expr, SortExpr};
 use datafusion::common::arrow::datatypes::DataType;
 use futures_util::StreamExt;
@@ -30,12 +30,13 @@ fn apply_select_sort_on_non_distinct_query(mut df: DataFrame, select: Vec<Expr>,
     }
 }
 
-impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
+impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>, WHERE: ExactSizeIterator<Item = cli::Expression>> Query<CI, SBI, UCI, WHERE> {
     ///Scans `path` expecting specified `format`
     pub async fn create_lazy_datafusion(self, mut ctx: SessionConfig, path: &str, format: FileFormat, partition_by: &[String]) -> Result<DataFrame, DataFusionError> {
         use datafusion::datasource::file_format;
 
         let mut user_partitions = partition_by.iter().map(String::as_str).collect::<Vec<_>>();
+
 
         let mut partition_filters = Vec::new();
         let mut table_partition_cols = Vec::new();
@@ -114,6 +115,28 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         let df_plan = datafusion::logical_expr::LogicalPlanBuilder::scan_with_filters(table_name, Arc::new(DefaultTableSource::new(Arc::new(listing))), None, partition_filters)?.build()?;
         let mut df = datafusion::dataframe::DataFrame::new(ctx.state(), df_plan);
 
+        for filter in self.filter {
+            let left = match filter.left {
+                cli::Operand::Literal(literal) => lit(literal),
+                cli::Operand::Identifier(ident) => col(ident),
+            };
+
+            let right = match filter.right {
+                cli::Operand::Literal(literal) => lit(literal),
+                cli::Operand::Identifier(ident) => col(ident),
+            };
+
+            let filter = match filter.operator {
+                cli::Operator::Less => left.lt(right),
+                cli::Operator::LessEq => left.lt_eq(right),
+                cli::Operator::Eq => left.eq(right),
+                cli::Operator::NotEq => left.not_eq(right),
+                cli::Operator::GreaterEq => left.gt_eq(right),
+                cli::Operator::Greater => left.gt(right),
+            };
+            df = df.filter(filter)?;
+        }
+
         let select_columns = self.column.map(col).collect();
         df = if let Some(unique) = self.unique {
             if unique.columns.len() == 0 {
@@ -134,7 +157,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             }
         } else {
             if self.count_duplicates {
-                let aggr_expr = vec![datafusion::functions_aggregate::count::count(datafusion::prelude::lit("*")).alias(DUPLICATE_COLUMN)];
+                let aggr_expr = vec![datafusion::functions_aggregate::count::count(lit("*")).alias(DUPLICATE_COLUMN)];
                 let df = if select_columns.len() > 0 {
                     df.aggregate(select_columns.clone(), aggr_expr)?
                 } else {
