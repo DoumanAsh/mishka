@@ -3,7 +3,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use super::{FileFormat, Query, SortBy};
+use super::{FileFormat, Query, SortBy, DUPLICATE_COLUMN};
 
 pub use datafusion::dataframe::DataFrameWriteOptions;
 pub use datafusion::execution::context::{SessionContext, SessionConfig};
@@ -13,13 +13,13 @@ use datafusion::execution::cache::cache_manager::CacheManagerConfig;
 use datafusion::dataframe::DataFrame;
 use datafusion::error::DataFusionError;
 use datafusion::logical_expr::col;
-use datafusion::logical_expr::SortExpr;
+use datafusion::logical_expr::{Expr, SortExpr};
 use datafusion::common::arrow::datatypes::DataType;
 use futures_util::StreamExt;
 
-fn apply_select_sort_on_non_distinct_query(mut df: DataFrame, select: impl ExactSizeIterator<Item = String>, sort: impl ExactSizeIterator<Item = SortBy>) -> Result<DataFrame, DataFusionError> {
+fn apply_select_sort_on_non_distinct_query(mut df: DataFrame, select: Vec<Expr>, sort: impl ExactSizeIterator<Item = SortBy>) -> Result<DataFrame, DataFusionError> {
     if select.len() > 0 {
-        df = df.select(select.map(|column| col(column)))?
+        df = df.select(select)?
     };
 
     if sort.len() != 0 {
@@ -102,7 +102,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         };
         println!(">{}: Inferring schema", first_file.location);
         let schema = listing_options.format.infer_schema(&ctx.state(), &ctx_object_store, &[first_file]).await?;
-        let config = datafusion::datasource::listing::ListingTableConfig::new(listing_path).with_listing_options(listing_options).with_schema(schema);
+        let config = datafusion::datasource::listing::ListingTableConfig::new(listing_path).with_listing_options(listing_options).with_schema(schema.clone());
         let listing = datafusion::datasource::listing::ListingTable::try_new(config)?;
 
         let table_name = table_path.trim_end_matches('/').rsplit('/').next().unwrap();
@@ -113,10 +113,11 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         }
         let df_plan = datafusion::logical_expr::LogicalPlanBuilder::scan_with_filters(table_name, Arc::new(DefaultTableSource::new(Arc::new(listing))), None, partition_filters)?.build()?;
         let mut df = datafusion::dataframe::DataFrame::new(ctx.state(), df_plan);
+
+        let select_columns = self.column.map(col).collect();
         df = if let Some(unique) = self.unique {
             if unique.columns.len() == 0 {
                 let distinct_on = unique.columns.map(|column| col(column)).collect();
-                let select = self.column.map(|column| col(column)).collect();
                 let sort = if self.sort_by.len() > 0 {
                     Some(self.sort_by.map(|it| SortExpr {
                         expr: col(it.column),
@@ -126,13 +127,25 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
                 } else {
                     None
                 };
-                df.distinct_on(distinct_on, select, sort)?
+                df.distinct_on(distinct_on, select_columns, sort)?
             } else {
                 df = df.distinct()?;
-                apply_select_sort_on_non_distinct_query(df, self.column, self.sort_by)?
+                apply_select_sort_on_non_distinct_query(df, select_columns, self.sort_by)?
             }
         } else {
-            apply_select_sort_on_non_distinct_query(df, self.column, self.sort_by)?
+            if self.count_duplicates {
+                let aggr_expr = vec![datafusion::functions_aggregate::count::count(datafusion::prelude::lit("*")).alias(DUPLICATE_COLUMN)];
+                let df = if select_columns.len() > 0 {
+                    df.aggregate(select_columns.clone(), aggr_expr)?
+                } else {
+                    let group_expr = schema.fields().iter().map(|field| col(field.name())).collect();
+                    df.aggregate(group_expr, aggr_expr)?
+                };
+
+                apply_select_sort_on_non_distinct_query(df, select_columns, self.sort_by)?
+            } else {
+                apply_select_sort_on_non_distinct_query(df, select_columns, self.sort_by)?
+            }
         };
 
         Ok(df)

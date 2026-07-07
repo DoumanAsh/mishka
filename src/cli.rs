@@ -121,6 +121,8 @@ pub struct CommonArgs {
     pub unique: bool,
     ///Specify columns to use to consider for uniqueness
     pub unique_by: Vec<String>,
+    ///Specify to count duplicate records under column `dup_count`
+    pub count_duplicates: bool,
     ///Specify to use stable operations
     pub stable: bool,
     ///Expected file format. Defaults to inferring from path
@@ -152,6 +154,7 @@ impl CommonArgs {
             }),
             coerce_int96: self.coerce_int96,
             keep_partition: self.keep_partition,
+            count_duplicates: self.count_duplicates,
         }
     }
 }
@@ -179,6 +182,9 @@ pub struct Cli {
     ///Specify columns to use to consider for uniqueness
     pub unique_by: Vec<String>,
     #[arg(long)]
+    ///Specify to count duplicate records under column `dup_count`
+    pub count_duplicates: bool,
+    #[arg(long)]
     ///Specify to use stable operations
     pub stable: bool,
     #[arg(long, default_value = "ExpectFormat::Infer")]
@@ -202,6 +208,7 @@ impl Cli {
             sort_desc,
             mut unique,
             unique_by,
+            count_duplicates,
             stable,
             format,
             coerce_int96,
@@ -216,6 +223,7 @@ impl Cli {
             sort_desc,
             unique,
             unique_by,
+            count_duplicates,
             stable,
             format,
             coerce_int96,

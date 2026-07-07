@@ -1,6 +1,6 @@
 //!Polars module
 
-use super::{FileFormat, Query, SortBy};
+use super::{FileFormat, Query, SortBy, DUPLICATE_COLUMN};
 
 pub use polars::error::PolarsError;
 pub use polars::prelude::{Expr, PlRefPath, PlSmallStr};
@@ -16,8 +16,10 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         };
 
         let mut select = Vec::new();
+        let mut group_by = Vec::new();
         for column in self.column {
-            select.push(col(column));
+            select.push(col(column.as_str()));
+            group_by.push(col(column));
         }
         if select.is_empty() {
             select.push(col(PlSmallStr::from_static("*")));
@@ -56,7 +58,12 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             };
         }
 
-        Ok(df.select(&select))
+        if !group_by.is_empty() {
+            let agg_expr = col("*").count().alias(DUPLICATE_COLUMN);
+            Ok(df.group_by(&group_by).agg([agg_expr]))
+        } else {
+            Ok(df)
+        }
     }
 }
 

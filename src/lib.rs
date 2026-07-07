@@ -3,6 +3,8 @@
 #![warn(missing_docs)]
 #![allow(clippy::style)]
 
+const DUPLICATE_COLUMN: &str = "dup_count";
+
 pub mod utils;
 #[cfg(feature = "cli")]
 pub mod cli;
@@ -154,7 +156,9 @@ pub struct Query<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<It
     ///Prefer default value unless you know what you're doing
     pub coerce_int96: Int96Timestamp,
     ///Specifies whether to keep partitioned columns
-    pub keep_partition: bool
+    pub keep_partition: bool,
+    ///Specify to count duplicate records under column `dup_count`
+    pub count_duplicates: bool,
 }
 
 impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>, UCI: ExactSizeIterator<Item = String>> Query<CI, SBI, UCI> {
