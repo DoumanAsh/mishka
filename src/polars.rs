@@ -26,28 +26,6 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         }
         df = df.select(&select);
 
-        for filter in self.filter {
-            let left = match filter.left {
-                cli::Operand::Literal(literal) => lit(literal),
-                cli::Operand::Identifier(ident) => col(ident),
-            };
-
-            let right = match filter.right {
-                cli::Operand::Literal(literal) => lit(literal),
-                cli::Operand::Identifier(ident) => col(ident),
-            };
-
-            let filter = match filter.operator {
-                cli::Operator::Less => left.lt(right),
-                cli::Operator::LessEq => left.lt_eq(right),
-                cli::Operator::Eq => left.eq(right),
-                cli::Operator::NotEq => left.neq(right),
-                cli::Operator::GreaterEq => left.gt_eq(right),
-                cli::Operator::Greater => left.gt(right),
-            };
-            df = df.filter(filter);
-        }
-
         if self.sort_by.len() != 0 {
             let mut descending = Vec::new();
             let mut columns = Vec::new();
@@ -82,10 +60,32 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
 
         if !group_by.is_empty() {
             let agg_expr = col("*").count().alias(DUPLICATE_COLUMN);
-            Ok(df.group_by(&group_by).agg([agg_expr]))
-        } else {
-            Ok(df)
+            df = df.group_by(&group_by).agg([agg_expr]);
         }
+
+        for filter in self.filter {
+            let left = match filter.left {
+                cli::Operand::Literal(literal) => lit(literal),
+                cli::Operand::Identifier(ident) => col(ident),
+            };
+
+            let right = match filter.right {
+                cli::Operand::Literal(literal) => lit(literal),
+                cli::Operand::Identifier(ident) => col(ident),
+            };
+
+            let filter = match filter.operator {
+                cli::Operator::Less => left.lt(right),
+                cli::Operator::LessEq => left.lt_eq(right),
+                cli::Operator::Eq => left.eq(right),
+                cli::Operator::NotEq => left.neq(right),
+                cli::Operator::GreaterEq => left.gt_eq(right),
+                cli::Operator::Greater => left.gt(right),
+            };
+            df = df.filter(filter);
+        }
+
+        Ok(df)
     }
 }
 

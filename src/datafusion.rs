@@ -114,29 +114,6 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
         }
         let df_plan = datafusion::logical_expr::LogicalPlanBuilder::scan_with_filters(table_name, Arc::new(DefaultTableSource::new(Arc::new(listing))), None, partition_filters)?.build()?;
         let mut df = datafusion::dataframe::DataFrame::new(ctx.state(), df_plan);
-
-        for filter in self.filter {
-            let left = match filter.left {
-                cli::Operand::Literal(literal) => lit(literal),
-                cli::Operand::Identifier(ident) => col(ident),
-            };
-
-            let right = match filter.right {
-                cli::Operand::Literal(literal) => lit(literal),
-                cli::Operand::Identifier(ident) => col(ident),
-            };
-
-            let filter = match filter.operator {
-                cli::Operator::Less => left.lt(right),
-                cli::Operator::LessEq => left.lt_eq(right),
-                cli::Operator::Eq => left.eq(right),
-                cli::Operator::NotEq => left.not_eq(right),
-                cli::Operator::GreaterEq => left.gt_eq(right),
-                cli::Operator::Greater => left.gt(right),
-            };
-            df = df.filter(filter)?;
-        }
-
         let select_columns = self.column.map(col).collect();
         df = if let Some(unique) = self.unique {
             if unique.columns.len() == 0 {
@@ -170,6 +147,28 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
                 apply_select_sort_on_non_distinct_query(df, select_columns, self.sort_by)?
             }
         };
+
+        for filter in self.filter {
+            let left = match filter.left {
+                cli::Operand::Literal(literal) => lit(literal),
+                cli::Operand::Identifier(ident) => col(ident),
+            };
+
+            let right = match filter.right {
+                cli::Operand::Literal(literal) => lit(literal),
+                cli::Operand::Identifier(ident) => col(ident),
+            };
+
+            let filter = match filter.operator {
+                cli::Operator::Less => left.lt(right),
+                cli::Operator::LessEq => left.lt_eq(right),
+                cli::Operator::Eq => left.eq(right),
+                cli::Operator::NotEq => left.not_eq(right),
+                cli::Operator::GreaterEq => left.gt_eq(right),
+                cli::Operator::Greater => left.gt(right),
+            };
+            df = df.filter(filter)?;
+        }
 
         Ok(df)
     }
