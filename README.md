@@ -13,7 +13,7 @@ Mostly written to evaluate both Rust libraries.
 Common
 
 ```
-mishka 1.0.0-beta.9
+mishka 1.0.0-beta.10
 Utility to work with data files
 
 USAGE: [OPTIONS] <command>
@@ -27,6 +27,7 @@ OPTIONS:
          --unique                       Specify to select unique
          --unique_by <unique_by>...     Specify columns to use to consider for uniqueness
          --count_duplicates             Specify to count duplicate records under column `dup_count`
+         --filter <filter>...           Specify filtering expressions to use when selecting data.
          --stable                       Specify to use stable operations
          --format <format>              Expected file format. Defaults to inferring from path
          --coerce_int96 <coerce_int96>  Specifies time unit for int96. Defaults to nanosecond
