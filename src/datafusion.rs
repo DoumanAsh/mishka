@@ -90,10 +90,10 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
 
         let original_path = datafusion::datasource::listing::ListingTableUrl::parse(path)?;
         let listing_path = datafusion::datasource::listing::ListingTableUrl::parse(&table_path)?;
-        let listing_options = datafusion::datasource::listing::ListingOptions::new(match format {
+        let mut listing_options = datafusion::datasource::listing::ListingOptions::new(match format {
             FileFormat::Csv => Arc::new(file_format::csv::CsvFormat::default().with_has_header(true)),
             FileFormat::Parquet => Arc::new(file_format::parquet::ParquetFormat::new()),
-        }).with_table_partition_cols(table_partition_cols.clone());
+        });
 
         println!(">{original_path}: Fetching available file");
         let ctx_object_store = ctx.runtime_env().object_store(&original_path)?;
@@ -102,7 +102,22 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             None => return Err(DataFusionError::Internal(format!("{path}: No files available to infer schema"))),
         };
         println!(">{}: Inferring schema", first_file.location);
+        let old_table_partition_cols_len = table_partition_cols.len();
+        for part in first_file.location.parts() {
+            if let Some((new_key, _)) = part.as_ref().split_once('=') {
+                if table_partition_cols.iter().position(|(key, _typ)| key == new_key).is_none() {
+                    table_partition_cols.push((new_key.to_owned(), DataType::Utf8View));
+                }
+            }
+        }
+
+        if old_table_partition_cols_len != table_partition_cols.len() {
+            println!(">Infer schema partitions={:?}", table_partition_cols);
+        }
+
+        listing_options = listing_options.with_table_partition_cols(table_partition_cols);
         let schema = listing_options.format.infer_schema(&ctx.state(), &ctx_object_store, &[first_file]).await?;
+
         let config = datafusion::datasource::listing::ListingTableConfig::new(listing_path).with_listing_options(listing_options).with_schema(schema.clone());
         let listing = datafusion::datasource::listing::ListingTable::try_new(config)?;
 
