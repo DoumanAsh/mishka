@@ -115,7 +115,7 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
             println!(">Infer schema partitions={:?}", table_partition_cols);
         }
 
-        listing_options = listing_options.with_table_partition_cols(table_partition_cols);
+        listing_options = listing_options.with_table_partition_cols(table_partition_cols.clone());
         let schema = listing_options.format.infer_schema(&ctx.state(), &ctx_object_store, &[first_file]).await?;
 
         let config = datafusion::datasource::listing::ListingTableConfig::new(listing_path).with_listing_options(listing_options).with_schema(schema.clone());
@@ -153,7 +153,11 @@ impl<CI: ExactSizeIterator<Item = String>, SBI: ExactSizeIterator<Item = SortBy>
                 let df = if select_columns.len() > 0 {
                     df.aggregate(select_columns.clone(), aggr_expr)?
                 } else {
-                    let group_expr = schema.fields().iter().map(|field| col(field.name())).collect();
+                    let group_expr = if self.keep_partition {
+                        table_partition_cols.into_iter().map(|(field, _)| col(field)).chain(schema.fields().iter().map(|field| col(field.name()))).collect()
+                    } else {
+                        schema.fields().iter().map(|field| col(field.name())).collect()
+                    };
                     df.aggregate(group_expr, aggr_expr)?
                 };
 
